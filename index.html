@@ -102,6 +102,11 @@ h2{font-family:'Space Grotesk';font-size:23px;font-weight:700;}
 .tee-dot{width:38px;height:38px;border-radius:50%;border:3px solid transparent;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
 .tee-dot.on{border-color:var(--volt);transform:scale(1.1);}
 .cr-badge{margin-left:auto;font-size:13px;font-weight:800;color:var(--volt);background:rgba(212,255,63,.1);border:1px solid rgba(212,255,63,.35);border-radius:20px;padding:6px 12px;white-space:nowrap;}
+.sugg{display:flex;flex-direction:column;gap:6px;}
+.sugg:empty{display:none;}
+.sugg-item{text-align:left;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:11px 13px;font-size:15px;color:var(--text);display:flex;align-items:center;gap:8px;}
+.sugg-item small{color:var(--muted);margin-left:auto;}
+.sugg-item:active{border-color:var(--volt);background:rgba(212,255,63,.08);}
 .opt-chip{min-width:44px;height:44px;border-radius:12px;border:2px solid var(--line);display:flex;align-items:center;justify-content:center;font-size:18px;opacity:.35;background:var(--panel);flex-shrink:0;}
 .opt-chip.on{border-color:var(--gold);background:rgba(255,201,77,.12);opacity:1;}
 .switch{display:flex;align-items:center;justify-content:space-between;background:var(--card);border:2px solid var(--line);border-radius:18px;padding:15px 16px;font-size:17px;font-weight:700;}
@@ -739,7 +744,7 @@ function renderPlayersList(){
     html+=`<div class="pcard">
       <div class="row">
         <span class="pnum num">${i+1}</span>
-        <input placeholder="Nom" maxlength="30" value="${p.name}" ${isMe?'readonly style="opacity:.75;flex:1;"':'style="flex:1;"'} oninput="pset(${i},'name',this.value)">
+        <input placeholder="Nom" maxlength="30" value="${p.name}" ${isMe?'readonly style="opacity:.75;flex:1;"':'style="flex:1;"'} oninput="pset(${i},'name',this.value);suggestMembers(${i},this.value)" autocomplete="off">
         <div class="seg">
           <button class="${p.gender==='H'?'on':''}" onclick="pset(${i},'gender','H')">H</button>
           <button class="${p.gender==='F'?'on':''}" onclick="pset(${i},'gender','F')">F</button>
@@ -754,6 +759,7 @@ function renderPlayersList(){
         </div>
         <span class="cr-badge" id="cr${i}">${playingHcp(parseFloat(p.hcp)||0,p.gender,p.tee)} cps</span>
       </div>
+      <div class="sugg" id="sugg${i}"></div>
     </div>`;
   }
   $('players-list').innerHTML=html;
@@ -761,6 +767,37 @@ function renderPlayersList(){
   $('birdie-chk').textContent=S.setup.birdiePot?'✓':'';
 }
 function toggleBirdiePot(){S.setup.birdiePot=!S.setup.birdiePot;renderPlayersList();}
+
+/* ---- suggestions : amis d'abord, puis membres du club ---- */
+let suggT=null;
+function suggestMembers(i,q){
+  const p=S.setup.players[i];
+  if(p.memberId)p.memberId=null; /* on retape → délié */
+  clearTimeout(suggT);
+  const box=$('sugg'+i);
+  if(!box)return;
+  if(!sb||q.trim().length<2){box.innerHTML='';return;}
+  suggT=setTimeout(async()=>{
+    try{
+      const r=await sb.from('golf_members').select('id,name,gender,hcp_index,tee_color,club')
+        .ilike('name','%'+q.trim()+'%').limit(6);
+      if(r.error||!r.data.length){box.innerHTML='';return;}
+      const rows=r.data
+        .filter(m=>!S.setup.players.some((x,xi)=>xi!==i&&x&&x.memberId===m.id))
+        .sort((a,b)=>(FRIENDS.has(b.id)?1:0)-(FRIENDS.has(a.id)?1:0));
+      box.innerHTML=rows.map(m=>
+        `<button class="sugg-item" onclick='pickMember(${i},${JSON.stringify(m).replace(/'/g,"&#39;")})'>
+          ${FRIENDS.has(m.id)?'💚':'👤'} <b>${m.name}</b><small>idx ${m.hcp_index}${m.club?' · '+m.club:''}</small>
+        </button>`).join('');
+    }catch(e){}
+  },250);
+}
+function pickMember(i,m){
+  S.setup.players[i]={name:m.name,gender:m.gender,hcp:m.hcp_index,tee:m.tee_color,
+    opt:S.setup.players[i]?.opt??true,memberId:m.id};
+  renderPlayersList();
+  toast(m.name+' ✓ — sa carte comptera dans son historique');
+}
 
 /* ================= SCORING ================= */
 function scoreClass(sc,par){
