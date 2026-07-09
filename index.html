@@ -247,6 +247,14 @@ td.sc-x{background:#000 !important;color:var(--coral) !important;}
 }
 .hero-award .big{font-family:'Space Grotesk';font-size:52px;font-weight:700;color:var(--volt);line-height:1.1;}
 .hero-award .lbl{letter-spacing:2.5px;font-size:11px;color:var(--muted);font-weight:900;}
+.lvl-bar{height:10px;background:rgba(255,255,255,.08);border-radius:6px;overflow:hidden;margin:12px 20px 0;}
+.lvl-bar i{display:block;height:100%;background:var(--volt);border-radius:6px;transition:width .4s;}
+.badge-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:8px;}
+.badge{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:12px 8px;text-align:center;}
+.badge.off{opacity:.32;filter:grayscale(1);}
+.badge .bi{font-size:26px;line-height:1.2;}
+.badge .bn{font-size:12px;font-weight:800;margin-top:4px;}
+.badge .bd{font-size:10px;color:var(--muted);margin-top:2px;line-height:1.25;}
 
 .modal-bg{position:fixed;inset:0;background:rgba(5,8,12,.75);display:flex;align-items:center;justify-content:center;z-index:100;padding:16px;backdrop-filter:blur(4px);}
 .modal{background:var(--panel);border:1px solid var(--line);border-radius:26px;padding:26px 22px;width:100%;max-width:420px;max-height:88dvh;overflow-y:auto;}
@@ -285,7 +293,7 @@ td.sc-x{background:#000 !important;color:var(--coral) !important;}
     <h2>Menu</h2>
     <div class="modal-btns">
       <button class="btn btn-volt" id="menu-resume" onclick="toggleMenu();show('play')">⛳ Reprendre la partie</button>
-      <button class="btn btn-dark" onclick="toggleMenu();show('lb')">🏆 Leaderboard tournoi</button>
+      <button class="btn btn-dark" onclick="toggleMenu();show('lb')">🏆 Classements</button>
       <button class="btn btn-dark" onclick="toggleMenu();show('cards')">📋 Cartes du groupe</button>
       <button class="btn btn-dark" onclick="toggleMenu();show('account')">👤 Mon compte & Tees</button>
       <button class="btn btn-ghost" onclick="toggleMenu();show('help')">? Aide</button>
@@ -397,7 +405,7 @@ td.sc-x{background:#000 !important;color:var(--coral) !important;}
   </div>
   <div class="sync-dot" id="sync-dot"></div>
   <div style="display:flex;gap:10px;width:100%;">
-    <button class="btn btn-dark btn-sm" style="flex:1;" onclick="show('lb')">🏆 Tournoi</button>
+    <button class="btn btn-dark btn-sm" style="flex:1;" onclick="show('lb')">🏆 Classements</button>
     <button class="btn btn-dark btn-sm" style="flex:1;" onclick="show('cards')">📋 Cartes</button>
   </div>
   <button class="btn btn-dark btn-sm" id="btn-finish" onclick="finishRound()">🏁 Terminer la partie</button>
@@ -421,12 +429,17 @@ td.sc-x{background:#000 !important;color:var(--coral) !important;}
 <!-- ================= LEADERBOARD TOURNOI ================= -->
 <div id="screen-lb" class="screen">
   <div style="display:flex;align-items:center;justify-content:space-between;width:100%;">
-    <h2>Leaderboard du jour</h2>
+    <h2>Classements</h2>
     <span style="display:flex;align-items:center;gap:7px;font-size:13px;font-weight:900;color:var(--coral);letter-spacing:1px;"><span class="live-dot"></span>LIVE</span>
+  </div>
+  <div class="tabs">
+    <button class="tab on" id="sc-jour" onclick="lbScope='jour';renderLb()">Jour</button>
+    <button class="tab" id="sc-saison" onclick="lbScope='saison';renderLb()">Saison</button>
+    <button class="tab" id="sc-ringer" onclick="lbScope='ringer';renderLb()">Ringer</button>
   </div>
   <div class="pot-banner hidden" id="pot-banner"><span>🐦 Cagnotte Birdies</span><span class="amount num" id="pot-amount">0 €</span></div>
   <div class="pot-detail hidden" id="pot-detail"></div>
-  <div class="tabs">
+  <div class="tabs" id="mode-tabs">
     <button class="tab on" id="tab-brut" onclick="lbMode='brut';renderLb()">Brut</button>
     <button class="tab" id="tab-net" onclick="lbMode='net';renderLb()">Net</button>
   </div>
@@ -460,6 +473,8 @@ td.sc-x{background:#000 !important;color:var(--coral) !important;}
   <div class="help-block"><b>Stroke Play</b> — total des coups, classements brut et net. <b>Stableford</b> — par = 2 pts, birdie = 3, eagle = 4, bogey = 1 ; en net les coups rendus s'ajoutent trou par trou. <b>Scramble à 2</b> — 1 balle par équipe, index d'équipe = 25 % du cumul.</div>
   <div class="help-block"><b>La Chouette (2-3-4 joueurs)</b> — points distribués à chaque trou en net : à 3 joueurs, le fameux <b>4-2-0</b>. Égalité en tête : 3-3-0 ; égalité 2ᵉ place : 4-1-1 ; triple égalité : 2-2-2. À 2 joueurs : 2-0 ; à 4 : 6-4-2-0.</div>
   <div class="help-block"><b>🏅 Les Tees</b> — 1ᵉʳ = 10×N, 2ᵉ = 6×N, 3ᵉ = 4×N, autres = N (N = joueurs du jour) + 5 tees par birdie. Crédités automatiquement sur ton compte membre. À échanger au club-house ou à convertir en avance pour la Grande Compétition de fin d'année.</div>
+  <div class="help-block"><b>📈 Niveaux & badges</b> — chaque tee gagné compte pour ton niveau, à vie : dépenser à la boutique ne te fait pas redescendre. Les badges se débloquent automatiquement avec tes cartes (premier birdie, eagle, sous les 90, birdie sur les 18 trous…). Le classement <b>Saison</b> = total de tees gagnés dans l'année.</div>
+  <div class="help-block"><b>🗺️ Ringer</b> — ton meilleur score sur chaque trou, cumulé sur la saison. Chaque partie peut améliorer ta carte éclectique : le classement Ringer du club se joue toute l'année.</div>
   <div class="help-block"><b>🐦 Prime aux Birdies</b> — mise de 5 € par participant. Cagnotte = 5 € × participants du jour, partagée au prorata des parts : <b>birdie = 1 part, eagle = 3 parts</b>. Aucun birdie ? Reportée au lendemain.</div>
   <button class="btn btn-volt" onclick="backHome()">← Retour</button>
 </div>
@@ -1098,7 +1113,77 @@ function allUnits(){
   const mine=S.round?S.round.units:[];
   return [...mine,...lbField];
 }
+/* ---- Saison (classement club par tees gagnés) ---- */
+let lbScope='jour';
+let saisonCache={t:0,rows:[]}, ringerCache={t:0,rows:[]};
+async function loadSaison(){
+  if(!sb||Date.now()-saisonCache.t<60000)return;
+  try{
+    const r=await sb.from('golf_members').select('id,name,club,hcp_index,tees_earned').order('tees_earned',{ascending:false}).limit(50);
+    if(!r.error)saisonCache={t:Date.now(),rows:r.data};
+  }catch(e){}
+}
+function renderSaisonHtml(){
+  let html='',pos=0,prev=null;
+  saisonCache.rows.forEach((m,i)=>{
+    if(prev===null||m.tees_earned!==prev){pos=i+1;prev=m.tees_earned;}
+    const L=levelOf(m.tees_earned);
+    const me=S.user&&!S.user.guest&&S.user.id===m.id;
+    html+=`<div class="lb-row ${me?'me':''} ${pos===1?'top1':''}">
+      <span class="lb-pos num">${pos}</span>
+      <span class="lb-name">${m.name}${me?' ⭐':''}${!me&&FRIENDS.has(m.id)?' 💚':''}<small>Niveau ${L.lvl} · index ${m.hcp_index}</small></span>
+      <span class="lb-score even num">${m.tees_earned} 🏅</span>
+    </div>`;
+  });
+  $('lb-list').innerHTML=html||'<div class="lb-row"><span class="lb-name">Les tees gagnés en partie feront le classement de la saison.</span></div>';
+}
+/* ---- Ringer (meilleur score cumulé par trou, saison) ---- */
+async function loadRinger(){
+  if(!sb||Date.now()-ringerCache.t<60000)return;
+  try{
+    const yr=new Date().getFullYear();
+    const r=await sb.from('golf_round_players')
+      .select('member_id,display_name,scores,golf_rounds!inner(round_date)')
+      .not('member_id','is',null).gte('golf_rounds.round_date',yr+'-01-01').limit(1000);
+    if(r.error)return;
+    const map={};
+    r.data.forEach(p=>{
+      const e=map[p.member_id]||(map[p.member_id]={id:p.member_id,name:p.display_name,best:Array(18).fill(null)});
+      (Array.isArray(p.scores)?p.scores:[]).forEach((sc,i)=>{
+        if(typeof sc==='number'&&i<18&&(e.best[i]==null||sc<e.best[i]))e.best[i]=sc;
+      });
+    });
+    const rows=Object.values(map).map(e=>{
+      let covered=0,toPar=0;
+      e.best.forEach((b,i)=>{if(b!=null){covered++;toPar+=b-HOLES[i].par;}});
+      return {...e,covered,toPar};
+    }).filter(e=>e.covered>0);
+    rows.sort((a,b)=>b.covered-a.covered||a.toPar-b.toPar);
+    ringerCache={t:Date.now(),rows};
+  }catch(e){}
+}
+function renderRingerHtml(){
+  let html='';
+  ringerCache.rows.forEach((e,i)=>{
+    const me=S.user&&!S.user.guest&&S.user.id===e.id;
+    html+=`<div class="lb-row ${me?'me':''} ${i===0?'top1':''}">
+      <span class="lb-pos num">${i+1}</span>
+      <span class="lb-name">${e.name}${me?' ⭐':''}${!me&&FRIENDS.has(e.id)?' 💚':''}<small>${e.covered}/18 trous couverts</small></span>
+      <span class="lb-score ${clsToPar(e.toPar)}">${fmtToPar(e.toPar)}</span>
+    </div>`;
+  });
+  $('lb-list').innerHTML=html||'<div class="lb-row"><span class="lb-name">Ringer de la saison : ton meilleur score sur chaque trou, cumulé. Joue une partie pour entrer au classement !</span></div>';
+}
 function renderLb(){
+  ['jour','saison','ringer'].forEach(s=>$('sc-'+s).classList.toggle('on',lbScope===s));
+  if(lbScope!=='jour'){
+    $('mode-tabs').classList.add('hidden');
+    $('pot-banner').classList.add('hidden');$('pot-detail').classList.add('hidden');
+    if(lbScope==='saison'){renderSaisonHtml();loadSaison().then(renderSaisonHtml);}
+    else{renderRingerHtml();loadRinger().then(renderRingerHtml);}
+    return;
+  }
+  $('mode-tabs').classList.remove('hidden');
   $('tab-brut').classList.toggle('on',lbMode==='brut');
   $('tab-net').classList.toggle('on',lbMode==='net');
   const r=S.round;
@@ -1249,19 +1334,72 @@ function newRound(){show('formule');renderFormuleGrid();}
 
 /* ================= COMPTE ================= */
 const PRIZES=[['Balle logotée St Clair',50],['Seau de practice',80],['Polo du club',300],['Green-fee invité',500],['1 coup rendu — Grande Compétition de fin d\'année',200]];
+/* ---- Niveaux : XP = tees gagnés à vie (le solde dépensé ne baisse pas le niveau) ---- */
+function levelOf(xp){
+  let lvl=1,base=0,next=100,i=0;
+  const steps=[150,250,400,500,600,800,1000,1200,1500];
+  while(xp>=next){lvl++;base=next;next+=steps[Math.min(i,steps.length-1)];i++;}
+  return {lvl,base,next,pct:Math.max(0,Math.min(100,Math.round((xp-base)/(next-base)*100)))};
+}
+/* ---- Badges : calculés depuis les cartes enregistrées ---- */
+const BADGES=[
+ {icon:'⛳',name:'Première carte',desc:'Jouer 1 partie',test:a=>a.rounds>=1},
+ {icon:'📋',name:'Habitué',desc:'5 parties',test:a=>a.rounds>=5},
+ {icon:'🏛️',name:'Pilier du club',desc:'20 parties',test:a=>a.rounds>=20},
+ {icon:'🐦',name:'Premier birdie',desc:'1 birdie',test:a=>a.birdies>=1},
+ {icon:'🎯',name:'Chasseur',desc:'20 birdies en tout',test:a=>a.birdies>=20},
+ {icon:'🦅',name:'Eagle !',desc:'1 eagle',test:a=>a.eagles>=1},
+ {icon:'🗺️',name:'Tour du parcours',desc:'1 birdie sur chacun des 18 trous',test:a=>a.birdieHoles>=18},
+ {icon:'3️⃣',name:'Maître des par 3',desc:'Tous les par 3 en par ou mieux (même partie)',test:a=>a.par3clean},
+ {icon:'📉',name:'Sous le par net',desc:'Jouer −1 net ou mieux',test:a=>a.bestNet<=-1},
+ {icon:'🧊',name:'Série froide',desc:'9 trous sans bogey (aller ou retour)',test:a=>a.noBogey9},
+ {icon:'8️⃣',name:'Sous les 90',desc:'Carte complète sous 90 brut',test:a=>a.bestGross<90},
+ {icon:'7️⃣',name:'Sous les 80',desc:'Carte complète sous 80 brut',test:a=>a.bestGross<80}
+];
+function aggBadges(rounds){
+  const a={rounds:0,birdies:0,eagles:0,birdieHoles:0,par3clean:false,bestNet:99,noBogey9:false,bestGross:999};
+  const bh=new Set();
+  rounds.forEach(rp=>{
+    const scores=Array.isArray(rp.scores)?rp.scores:[];
+    const st=unitStats({ph:rp.coups_rendus||0,scores});
+    if(st.thru===0)return;
+    a.rounds++;a.birdies+=st.birdies;a.eagles+=st.eagles;
+    if(st.thru===18){
+      if(!scores.includes('X')){const g=PAR_TOTAL+st.brut;if(g<a.bestGross)a.bestGross=g;}
+      if(st.net<a.bestNet)a.bestNet=st.net;
+    }
+    let p3ok=true,front=true,back=true;
+    for(let i=0;i<18;i++){
+      const h=HOLES[i],sc=scores[i];
+      if(sc==null||sc==='X'){
+        if(h.par===3)p3ok=false;
+        if(i<9)front=false;else back=false;
+        continue;
+      }
+      const d=sc-h.par;
+      if(d<=-1)bh.add(i);
+      if(h.par===3&&d>0)p3ok=false;
+      if(d>=1){if(i<9)front=false;else back=false;}
+    }
+    if(p3ok)a.par3clean=true;
+    if(front||back)a.noBogey9=true;
+  });
+  a.birdieHoles=bh.size;
+  return a;
+}
 const FLBL={stroke:'Stroke Play',stab_brut:'Stableford brut',stab_net:'Stableford net',scramble:'Scramble',chouette:'Chouette'};
 async function renderAccount(){
   if(!S.user){$('account-body').innerHTML='<p class="sub">Connecte-toi depuis l\'accueil.</p>';return;}
   let acc=S.user, history=[], myRounds=[], frRows=[], frMembers={}, liveFriends=[];
   if(!S.user.guest&&sb){
     try{
-      const m=await sb.from('golf_members').select('id,name,club,gender,hcp_index,tee_color,tees_balance').eq('id',S.user.id).single();
+      const m=await sb.from('golf_members').select('id,name,club,gender,hcp_index,tee_color,tees_balance,tees_earned').eq('id',S.user.id).single();
       if(!m.error){acc={...S.user,...m.data};S.user=acc;}
       const h=await sb.from('golf_tees_history').select('delta,reason,created_at').eq('member_id',S.user.id).order('created_at',{ascending:false}).limit(10);
       if(!h.error)history=h.data;
       /* historique de parties */
       const rr=await sb.from('golf_round_players').select('scores,coups_rendus,hcp_index,tee_color,updated_at,golf_rounds(round_date,formule)')
-        .eq('member_id',S.user.id).order('updated_at',{ascending:false}).limit(12);
+        .eq('member_id',S.user.id).order('updated_at',{ascending:false}).limit(200);
       if(!rr.error)myRounds=rr.data;
       /* amis */
       const fr=await sb.from('golf_friends').select('id,requester,addressee,status').or(`requester.eq.${S.user.id},addressee.eq.${S.user.id}`);
@@ -1282,9 +1420,38 @@ async function renderAccount(){
     }catch(e){}
   }
   const t=COURSE.tees[acc.tee_color]||COURSE.tees.jaune;
-  let html=`<div class="hero-award"><div class="lbl">${acc.name.toUpperCase()}${acc.club?' · '+acc.club.toUpperCase():''}</div><div class="big">${acc.tees_balance??0} 🏅</div><div class="lbl">TEES</div>
-  <div style="font-size:14px;margin-top:10px;color:var(--muted);">Index ${acc.hcp_index} · ${t.label} ${t.dist} m · ${playingHcp(acc.hcp_index||0,acc.gender||'H',acc.tee_color||'jaune')} coups rendus à St Clair</div>
+  const xp=acc.tees_earned??0, L=levelOf(xp);
+  let html=`<div class="hero-award"><div class="lbl">${acc.name.toUpperCase()}${acc.club?' · '+acc.club.toUpperCase():''}</div>
+  <div class="big">NIVEAU ${L.lvl}</div>
+  <div class="lvl-bar"><i style="width:${L.pct}%"></i></div>
+  <div class="lbl" style="margin-top:8px;">${xp} TEES GAGNÉS · NIVEAU ${L.lvl+1} À ${L.next}</div>
+  <div style="font-size:16px;margin-top:12px;color:var(--gold);font-weight:900;">Solde boutique : ${acc.tees_balance??0} 🏅</div>
+  <div style="font-size:14px;margin-top:8px;color:var(--muted);">Index ${acc.hcp_index} · ${t.label} ${t.dist} m · ${playingHcp(acc.hcp_index||0,acc.gender||'H',acc.tee_color||'jaune')} coups rendus à St Clair</div>
   ${S.user.guest?'<div style="font-size:13px;margin-top:8px;color:var(--muted);">Mode invité — crée un compte pour cumuler tes tees.</div>':''}</div>`;
+  /* ---- badges ---- */
+  if(!S.user.guest){
+    const agg=aggBadges(myRounds);
+    const unlocked=BADGES.filter(b=>b.test(agg)).length;
+    html+=`<div class="rescard"><div style="font-weight:800;font-size:17px;">🎖️ Badges · ${unlocked}/${BADGES.length}</div><div class="badge-grid">`+
+      BADGES.map(b=>`<div class="badge ${b.test(agg)?'':'off'}"><div class="bi">${b.icon}</div><div class="bn">${b.name}</div><div class="bd">${b.desc}</div></div>`).join('')+'</div></div>';
+    /* ---- carte éclectique (ringer perso) ---- */
+    const best=Array(18).fill(null);
+    myRounds.forEach(rp=>{(Array.isArray(rp.scores)?rp.scores:[]).forEach((sc,i)=>{if(typeof sc==='number'&&i<18&&(best[i]==null||sc<best[i]))best[i]=sc;});});
+    if(best.some(x=>x!=null)){
+      let covered=0,toPar=0,cells='';
+      best.forEach((b,i)=>{
+        if(b!=null){covered++;toPar+=b-HOLES[i].par;}
+        cells+=`<td class="${b!=null?scoreClass(b,HOLES[i].par):''}">${b??'·'}</td>`;
+      });
+      html+=`<div class="rescard" style="padding:14px;">
+        <div style="display:flex;justify-content:space-between;font-weight:800;font-size:17px;margin-bottom:10px;">
+          <span>🗺️ Ma carte éclectique</span><span class="num ${clsToPar(toPar)}">${fmtToPar(toPar)} <small style="color:var(--muted);">· ${covered}/18</small></span>
+        </div>
+        <div style="overflow-x:auto;"><table class="sc"><tr>${cells}</tr></table></div>
+        <div style="font-size:12px;color:var(--muted);margin-top:8px;">Ton meilleur score sur chaque trou, toutes parties confondues.</div>
+      </div>`;
+    }
+  }
   /* ---- amis ---- */
   if(!S.user.guest){
     const pendingIn=frRows.filter(f=>f.status==='pending'&&f.addressee===S.user.id);
@@ -1330,7 +1497,7 @@ async function renderAccount(){
   /* ---- historique de parties ---- */
   if(myRounds.length){
     html+='<div class="rescard"><div style="font-weight:800;font-size:17px;margin-bottom:6px;">⛳ Mes parties</div>'+
-      myRounds.map(rp=>{
+      myRounds.slice(0,12).map(rp=>{
         const st=unitStats({ph:rp.coups_rendus,scores:Array.isArray(rp.scores)?rp.scores:[]});
         const rd=rp.golf_rounds||{};
         const d=rd.round_date?new Date(rd.round_date+'T12:00:00').toLocaleDateString('fr-FR',{day:'numeric',month:'short'}):'';
