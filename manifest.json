@@ -1,0 +1,17 @@
+{
+  "name": "St Clair Live Scoring",
+  "short_name": "St Clair",
+  "description": "Carte de score digitale du Golf du Domaine de St Clair — livescoring, classements, points et Prime aux Birdies.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0c1017",
+  "theme_color": "#0c1017",
+  "lang": "fr",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
