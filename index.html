@@ -272,6 +272,12 @@ td.sc-x{background:#000 !important;color:var(--coral) !important;}
 .sbar i{display:block;width:100%;background:var(--card2);border-radius:8px 8px 4px 4px;}
 .sbar.best i{background:var(--volt);}
 .sbar b{font-size:10px;color:var(--muted);font-weight:800;}
+.ainp{background:var(--panel);border:2px solid var(--line);border-radius:12px;color:var(--text);font-weight:700;padding:11px;font-size:15px;min-width:0;width:100%;}
+.ainp:focus{outline:none;border-color:var(--volt);}
+.agrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
+.agrid label{font-size:11px;color:var(--muted);font-weight:800;letter-spacing:1px;display:block;margin-bottom:4px;}
+.pgrid{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;}
+.pgrid input{text-align:center;padding:9px 4px;}
 
 .modal-bg{position:fixed;inset:0;background:rgba(5,8,12,.75);display:flex;align-items:center;justify-content:center;z-index:100;padding:16px;backdrop-filter:blur(4px);}
 .modal{background:var(--panel);border:1px solid var(--line);border-radius:26px;padding:26px 22px;width:100%;max-width:420px;max-height:88dvh;overflow-y:auto;}
@@ -314,6 +320,7 @@ td.sc-x{background:#000 !important;color:var(--coral) !important;}
       <button class="btn btn-dark" onclick="toggleMenu();show('cards')">📋 Cartes du groupe</button>
       <button class="btn btn-dark" onclick="toggleMenu();show('account')">👤 Mon compte & Points</button>
       <button class="btn btn-ghost" onclick="toggleMenu();show('help')">? Aide</button>
+      <button class="btn btn-ghost" onclick="toggleMenu();openAdmin()">🔧 Espace club</button>
       <button class="btn btn-red" id="menu-logout" onclick="toggleMenu();logout()">Se déconnecter</button>
       <button class="btn btn-red" onclick="toggleMenu();confirmQuit()">✕ Quitter la partie</button>
     </div>
@@ -372,9 +379,29 @@ td.sc-x{background:#000 !important;color:var(--coral) !important;}
   </div>
 </div>
 
+<!-- ================= ADMIN ================= -->
+<div id="admin-modal" class="modal-bg hidden">
+  <div class="modal">
+    <h2>🔧 Espace club</h2>
+    <p class="sub">PIN administrateur.<br><b style="color:var(--gold);">Première visite : le PIN saisi devient LE PIN admin du club.</b></p>
+    <div class="field"><input id="admin-pin-input" type="password" inputmode="numeric" maxlength="8" placeholder="••••"></div>
+    <div class="modal-btns">
+      <button class="btn btn-volt" onclick="adminLogin()">Entrer</button>
+      <button class="btn btn-ghost" onclick="hide('admin-modal')">Annuler</button>
+    </div>
+  </div>
+</div>
+<div id="screen-admin" class="screen">
+  <h2>🔧 Espace club</h2>
+  <div id="admin-body" style="display:flex;flex-direction:column;gap:14px;width:100%;"></div>
+  <button class="btn btn-volt" onclick="adminSave()">💾 Enregistrer les réglages</button>
+  <button class="btn btn-ghost" onclick="backHome()">← Quitter</button>
+</div>
+
 <!-- ================= FORMULE ================= -->
 <div id="screen-formule" class="screen">
   <div><span class="eyebrow">Étape 1/2</span><h2>La formule du jour</h2></div>
+  <div id="club-banners" style="display:flex;flex-direction:column;gap:10px;"></div>
   <div class="choice-grid" id="formule-grid"></div>
   <button class="btn btn-volt" onclick="gotoPlayers()">Continuer →</button>
 </div>
@@ -573,13 +600,26 @@ function clsToPar(v){return v<0?'neg':(v>0?'pos':'even');}
 function fmtPts(v){return (Math.round(v*10)/10)+'';}
 function todayISO(){return new Date().toISOString().slice(0,10);}
 
-const SCREENS=['home','formule','players','play','cards','lb','summary','account','help'];
+/* ================= RÉGLAGES CLUB (admin) ================= */
+let SETTINGS={points_multiplier:1,multiplier_label:'',tv_enabled:true,
+ prizes:[["Balle logotée St Clair",50],["Seau de practice",80],["Polo du club",300],["Green-fee invité",500],["1 coup rendu — Grande Compétition de fin d'année",200]],
+ bareme:{first:10,second:6,third:4,other:1,birdie:5,defi:25},pro_card:null,event:null};
+async function loadSettings(){
+  if(!sb)return;
+  try{
+    const r=await sb.from('golf_settings').select('points_multiplier,multiplier_label,tv_enabled,prizes,bareme,pro_card,event').eq('id',1).single();
+    if(!r.error&&r.data)SETTINGS={...SETTINGS,...r.data,bareme:{...SETTINGS.bareme,...(r.data.bareme||{})}};
+  }catch(e){}
+}
+
+const SCREENS=['home','formule','players','play','cards','lb','summary','account','help','admin'];
 function show(name){
   SCREENS.forEach(s=>{const el=$('screen-'+s);if(el)el.classList.add('hidden');});
   unhide('screen-'+name);
   if(name==='play'&&S.round){unhide('sc-zone');renderPlay();}else hide('sc-zone');
   if(name==='home')hide('app-header');else unhide('app-header');
   if(name==='cards')renderGroupCards();
+  if(name==='admin')renderAdmin();
   if(name==='lb'){refreshField().then(renderLb);renderLb();startLbPoll();}else stopLbPoll();
   if(name==='account')renderAccount();
   window.scrollTo(0,0);
@@ -756,6 +796,14 @@ function renderFormuleGrid(){
   $('formule-grid').innerHTML=FORMULES.map(f=>
     `<button class="choice ${S.setup.formule===f.id?'sel':''}" onclick="pickFormule('${f.id}')">${f.label}<span class="desc">${f.desc}</span></button>`
   ).join('');
+  let bh='';
+  if((SETTINGS.points_multiplier||1)>1)
+    bh+=`<div class="pot-banner" style="border-color:rgba(212,255,63,.5);color:var(--volt);background:linear-gradient(120deg,#1c2a12,#131a10);"><span>🔥 POINTS ×${SETTINGS.points_multiplier} AUJOURD'HUI</span><span style="font-size:13px;font-weight:700;">${SETTINGS.multiplier_label||''}</span></div>`;
+  if(SETTINGS.event&&SETTINGS.event.active)
+    bh+=`<div class="pot-banner"><span>🏆 ${SETTINGS.event.name||'Événement du club'}</span><span style="font-size:13px;font-weight:700;">${SETTINGS.event.desc||''}</span></div>`;
+  if(SETTINGS.pro_card&&SETTINGS.pro_card.active)
+    bh+=`<div class="pot-banner" style="border-color:rgba(255,94,87,.5);color:var(--coral);background:linear-gradient(120deg,#2a1210,#1a1010);"><span>🎯 BEAT THE PRO</span><span style="font-size:13px;font-weight:700;">bats la carte de ${SETTINGS.pro_card.name||'notre pro'} — visible au leaderboard</span></div>`;
+  const cb=$('club-banners');if(cb)cb.innerHTML=bh;
 }
 function pickFormule(id){S.setup.formule=id;renderFormuleGrid();}
 function defaultPlayer(i){
@@ -1225,21 +1273,24 @@ function renderLb(){
   const stab=r&&r.formule.startsWith('stab');
   $('tab-brut').textContent=stab?'Stableford Brut':'Brut';
   $('tab-net').textContent=stab?'Stableford Net':'Net';
-  let rows=allUnits().map(u=>{
+  const pool=allUnits().slice();
+  if(SETTINGS.pro_card&&SETTINGS.pro_card.active&&Array.isArray(SETTINGS.pro_card.scores))
+    pool.push({name:'🎯 '+(SETTINGS.pro_card.name||'Le Pro'),hcp:0,ph:0,scores:SETTINGS.pro_card.scores,members:[],pro:true});
+  let rows=pool.map(u=>{
     const st=unitStats(u);
     let v,disp,cls='even';
     if(stab){v=lbMode==='net'?st.ptsN:st.ptsB;disp=v+' pts';}
     else{v=lbMode==='net'?st.net:st.brut;disp=fmtToPar(v);cls=clsToPar(v);}
-    const friend=!u.me&&(FRIENDS.has(u.memberId)||(u.members||[]).some(m=>FRIENDS.has(m.memberId)));
-    return {name:u.name,me:!!u.me,friend,thru:st.thru,v,disp,cls,hcp:u.hcp,birdies:st.birdies};
+    const friend=!u.me&&!u.pro&&(FRIENDS.has(u.memberId)||(u.members||[]).some(m=>FRIENDS.has(m.memberId)));
+    return {name:u.name,me:!!u.me,friend,pro:!!u.pro,thru:st.thru,v,disp,cls,hcp:u.hcp,birdies:st.birdies};
   }).filter(x=>x.thru>0);
   rows.sort((a,b)=>stab?(b.v-a.v||b.thru-a.thru):(a.v-b.v||b.thru-a.thru));
   let html='',pos=0,prev=null;
   rows.forEach((x,i)=>{
     if(prev===null||x.v!==prev){pos=i+1;prev=x.v;}
-    html+=`<div class="lb-row ${x.me?'me':''} ${pos===1?'top1':''}">
+    html+=`<div class="lb-row ${x.me?'me':''} ${pos===1?'top1':''}" ${x.pro?'style="border-color:rgba(255,94,87,.55);"':''}>
       <span class="lb-pos num">${pos}</span>
-      <span class="lb-name">${x.name}${x.me?' ⭐':''}${x.friend?' 💚':''}<small>index ${x.hcp??''}${x.birdies?' · '+x.birdies+' 🐦':''}</small></span>
+      <span class="lb-name">${x.name}${x.me?' ⭐':''}${x.friend?' 💚':''}<small>${x.pro?'la carte à battre':'index '+(x.hcp??'')}${x.birdies?' · '+x.birdies+' 🐦':''}</small></span>
       <span class="lb-thru">${x.thru===18?'F':'T'+x.thru}</span>
       <span class="lb-score ${x.cls}">${x.disp}</span>
     </div>`;
@@ -1279,10 +1330,11 @@ function renderLb(){
 
 /* ================= FIN / TEES / CAGNOTTE ================= */
 function teesForRank(rank,n){
-  if(rank===1)return 10*n;
-  if(rank===2)return 6*n;
-  if(rank===3)return 4*n;
-  return n;
+  const b=SETTINGS.bareme||{};
+  if(rank===1)return (b.first??10)*n;
+  if(rank===2)return (b.second??6)*n;
+  if(rank===3)return (b.third??4)*n;
+  return (b.other??1)*n;
 }
 async function finishRound(){
   const r=S.round;
@@ -1329,7 +1381,7 @@ async function finishRound(){
   for(const [idx,u] of r.units.entries()){
     const st=unitStats(u);
     const rk=rankMap.get(u)||n;
-    const tees=teesForRank(rk,n)+5*st.birdies;
+    const tees=(teesForRank(rk,n)+(SETTINGS.bareme.birdie??5)*st.birdies)*(SETTINGS.points_multiplier||1);
     const kOpt=u.members.filter(m=>m.opt).length;
     const uShares=potSharesOf(st)*kOpt;
     const potWin=potInfo&&uShares>0?Math.round(potInfo.share*uShares*100)/100:0;
@@ -1450,7 +1502,142 @@ async function shareCard(idx){
 }
 
 /* ================= COMPTE ================= */
-const PRIZES=[['Balle logotée St Clair',50],['Seau de practice',80],['Polo du club',300],['Green-fee invité',500],['1 coup rendu — Grande Compétition de fin d\'année',200]];
+/* ================= ESPACE CLUB (ADMIN) ================= */
+let adminPin=null,AD=null;
+function openAdmin(){
+  if(adminPin){show('admin');return;}
+  $('admin-pin-input').value='';
+  unhide('admin-modal');$('admin-pin-input').focus();
+}
+async function adminLogin(){
+  const pin=$('admin-pin-input').value.trim();
+  if(pin.length<4){toast('PIN : 4 chiffres minimum',1);return;}
+  if(!sb){toast('Pas de connexion',1);return;}
+  try{
+    const r=await sb.rpc('golf_admin_login',{p_pin:pin});
+    if(r.error)throw r.error;
+    adminPin=pin;AD=null;
+    SETTINGS={...SETTINGS,...r.data,bareme:{...SETTINGS.bareme,...(r.data.bareme||{})}};
+    hide('admin-modal');
+    show('admin');
+  }catch(e){toast((e.message||'').includes('PIN_FAUX')?'PIN incorrect':'Erreur réseau',1);}
+}
+function adInit(){
+  AD={mult:SETTINGS.points_multiplier||1,label:SETTINGS.multiplier_label||'',tv:SETTINGS.tv_enabled!==false,
+    prizes:(SETTINGS.prizes||[]).map(p=>[p[0],p[1]]),
+    bareme:{...SETTINGS.bareme},
+    pro:{name:(SETTINGS.pro_card&&SETTINGS.pro_card.name)||'',active:!!(SETTINGS.pro_card&&SETTINGS.pro_card.active),
+         scores:((SETTINGS.pro_card&&SETTINGS.pro_card.scores)||Array(18).fill(null)).slice(0,18)},
+    event:{name:(SETTINGS.event&&SETTINGS.event.name)||'',desc:(SETTINGS.event&&SETTINGS.event.desc)||'',active:!!(SETTINGS.event&&SETTINGS.event.active)}};
+  while(AD.pro.scores.length<18)AD.pro.scores.push(null);
+}
+function adPrize(i,k,v){AD.prizes[i][k]=k===1?+v:v;}
+function adPrizeDel(i){AD.prizes.splice(i,1);renderAdmin();}
+function adPrizeAdd(){AD.prizes.push(['',50]);renderAdmin();}
+function adPro(i,v){AD.pro.scores[i]=v===''?null:+v;}
+async function renderAdmin(){
+  if(!adminPin){openAdmin();return;}
+  if(!AD)adInit();
+  let html='';
+  html+=`<div class="rescard"><div style="font-weight:800;font-size:17px;margin-bottom:10px;">⚡ Réglages rapides</div>
+    <div style="display:flex;flex-direction:column;gap:10px;">
+      <div class="switch ${AD.mult>1?'on':''}" onclick="AD.mult=AD.mult>1?1:2;renderAdmin()"><span>🔥 Points ×2 aujourd'hui</span><span class="chk">${AD.mult>1?'✓':''}</span></div>
+      <input class="ainp" placeholder="Libellé du ×2 (ex : Mardi des seniors)" value="${AD.label}" oninput="AD.label=this.value">
+      <div class="switch ${AD.tv?'on':''}" onclick="AD.tv=!AD.tv;renderAdmin()"><span>📺 Écran TV club-house (/tv.html)</span><span class="chk">${AD.tv?'✓':''}</span></div>
+    </div></div>`;
+  html+=`<div class="rescard"><div style="font-weight:800;font-size:17px;margin-bottom:10px;">🏅 Barème des points</div>
+    <div class="agrid">
+      <div><label>1ᵉʳ (×N)</label><input class="ainp" type="number" value="${AD.bareme.first}" oninput="AD.bareme.first=this.value"></div>
+      <div><label>2ᵉ (×N)</label><input class="ainp" type="number" value="${AD.bareme.second}" oninput="AD.bareme.second=this.value"></div>
+      <div><label>3ᵉ (×N)</label><input class="ainp" type="number" value="${AD.bareme.third}" oninput="AD.bareme.third=this.value"></div>
+      <div><label>AUTRES (×N)</label><input class="ainp" type="number" value="${AD.bareme.other}" oninput="AD.bareme.other=this.value"></div>
+      <div><label>PAR BIRDIE</label><input class="ainp" type="number" value="${AD.bareme.birdie}" oninput="AD.bareme.birdie=this.value"></div>
+      <div><label>DÉFI GAGNÉ</label><input class="ainp" type="number" value="${AD.bareme.defi}" oninput="AD.bareme.defi=this.value"></div>
+    </div>
+    <div style="font-size:12px;color:var(--muted);margin-top:8px;">N = nombre de joueurs du jour.</div></div>`;
+  html+=`<div class="rescard"><div style="font-weight:800;font-size:17px;margin-bottom:10px;">🎁 Boutique des Points</div>
+    <div style="display:flex;flex-direction:column;gap:8px;">`+
+    AD.prizes.map((p,i)=>`<div style="display:flex;gap:8px;align-items:center;">
+      <input class="ainp" style="flex:2;" value="${(p[0]||'').replace(/"/g,'&quot;')}" placeholder="Récompense" oninput="adPrize(${i},0,this.value)">
+      <input class="ainp" style="width:84px;text-align:center;" type="number" value="${p[1]}" oninput="adPrize(${i},1,this.value)">
+      <button style="color:var(--coral);font-size:18px;" onclick="adPrizeDel(${i})">✕</button>
+    </div>`).join('')+
+    `</div><button class="btn btn-ghost btn-sm" style="margin-top:10px;" onclick="adPrizeAdd()">+ Ajouter une récompense</button></div>`;
+  html+=`<div class="rescard"><div style="font-weight:800;font-size:17px;margin-bottom:10px;">🎯 Beat the Pro — la carte à battre</div>
+    <div style="display:flex;flex-direction:column;gap:10px;">
+      <input class="ainp" placeholder="Nom du pro" value="${AD.pro.name.replace(/"/g,'&quot;')}" oninput="AD.pro.name=this.value">
+      <div class="pgrid">`+AD.pro.scores.map((s,i)=>`<input class="ainp" type="number" min="1" max="12" placeholder="T${i+1}" value="${s??''}" oninput="adPro(${i},this.value)">`).join('')+`</div>
+      <div class="switch ${AD.pro.active?'on':''}" onclick="AD.pro.active=!AD.pro.active;renderAdmin()"><span>Afficher au leaderboard du jour</span><span class="chk">${AD.pro.active?'✓':''}</span></div>
+    </div></div>`;
+  html+=`<div class="rescard"><div style="font-weight:800;font-size:17px;margin-bottom:10px;">🏆 Événement saisonnier</div>
+    <div style="display:flex;flex-direction:column;gap:10px;">
+      <input class="ainp" placeholder="Nom (ex : Parcours à thème d'octobre)" value="${AD.event.name.replace(/"/g,'&quot;')}" oninput="AD.event.name=this.value">
+      <input class="ainp" placeholder="Description courte" value="${AD.event.desc.replace(/"/g,'&quot;')}" oninput="AD.event.desc=this.value">
+      <div class="switch ${AD.event.active?'on':''}" onclick="AD.event.active=!AD.event.active;renderAdmin()"><span>Actif — bannière sur l'accueil</span><span class="chk">${AD.event.active?'✓':''}</span></div>
+    </div></div>`;
+  html+=`<div class="rescard"><div style="font-weight:800;font-size:17px;margin-bottom:6px;">👥 Membres <span id="admin-mcount" class="badge" style="background:var(--panel);"></span></div><div id="admin-members"><div class="pd-empty">Chargement…</div></div></div>`;
+  $('admin-body').innerHTML=html;
+  try{
+    const r=await sb.from('golf_members').select('name,club,hcp_index,tees_earned,tees_balance').order('tees_earned',{ascending:false}).limit(100);
+    if(!r.error){
+      $('admin-mcount').textContent=r.data.length;
+      $('admin-members').innerHTML=r.data.map(m=>{
+        const L=levelOf(m.tees_earned||0);
+        return `<div class="resline"><span>${m.name}<small style="color:var(--muted);"> · idx ${m.hcp_index} · Niv ${L.lvl}${m.club?' · '+m.club:''}</small></span><b style="color:var(--gold);">${m.tees_earned||0} 🏅 <small style="color:var(--muted);">(solde ${m.tees_balance||0})</small></b></div>`;
+      }).join('')||'<div class="pd-empty">Aucun membre pour l\'instant.</div>';
+    }
+  }catch(e){}
+}
+async function adminSave(){
+  if(!adminPin){openAdmin();return;}
+  const patch={points_multiplier:AD.mult,multiplier_label:AD.label.trim(),tv_enabled:AD.tv,
+    prizes:AD.prizes.filter(p=>(p[0]||'').trim()&&+p[1]>0).map(p=>[p[0].trim(),+p[1]]),
+    bareme:{first:+AD.bareme.first||10,second:+AD.bareme.second||6,third:+AD.bareme.third||4,other:+AD.bareme.other||1,birdie:+AD.bareme.birdie||5,defi:+AD.bareme.defi||25},
+    pro_card:{name:AD.pro.name.trim()||'Le Pro',active:AD.pro.active,scores:AD.pro.scores.map(v=>v==null||v===''?null:+v)},
+    event:{name:AD.event.name.trim(),desc:AD.event.desc.trim(),active:AD.event.active&&!!AD.event.name.trim()}};
+  try{
+    const r=await sb.rpc('golf_admin_save',{p_pin:adminPin,p_patch:patch});
+    if(r.error)throw r.error;
+    SETTINGS={...SETTINGS,...r.data,bareme:{...SETTINGS.bareme,...(r.data.bareme||{})}};
+    AD=null;
+    toast('Réglages du club enregistrés ✓');
+  }catch(e){toast('Erreur d\'enregistrement',1);}
+}
+
+/* ================= DÉFIS AMIS ================= */
+async function bestNetWindow(memberId,start,end){
+  try{
+    const r=await sb.from('golf_round_players').select('scores,coups_rendus,golf_rounds!inner(round_date)')
+      .eq('member_id',memberId).gte('golf_rounds.round_date',start).lte('golf_rounds.round_date',end);
+    if(r.error)return null;
+    let best=null;
+    r.data.forEach(rp=>{
+      const st=unitStats({ph:rp.coups_rendus||0,scores:Array.isArray(rp.scores)?rp.scores:[]});
+      if(st.thru===18&&(best==null||st.net<best))best=st.net;
+    });
+    return best;
+  }catch(e){return null;}
+}
+async function challengeFriend(fid){
+  const s=store.get('session');
+  try{
+    const r=await sb.rpc('golf_challenge_create',{p_me:S.user.id,p_pin:s.pin,p_friend:fid});
+    if(r.error)throw r.error;
+    toast('Défi envoyé ⚔️ — meilleur net sur 7 jours');renderAccount();
+  }catch(e){
+    const msg={DEJA_EN_COURS:'Défi déjà en cours avec ce joueur',PAS_AMIS:'Vous devez être amis',PIN_FAUX:'Reconnecte-toi'}[(e.message||'').trim()]||'Erreur';
+    toast(msg,1);
+  }
+}
+async function respondChallenge(id,accept){
+  const s=store.get('session');
+  try{
+    const r=await sb.rpc('golf_challenge_respond',{p_me:S.user.id,p_pin:s.pin,p_id:id,p_accept:accept});
+    if(r.error)throw r.error;
+    toast(accept?'Défi accepté ⚔️ — 7 jours pour signer ton meilleur net !':'Défi refusé');
+    renderAccount();
+  }catch(e){toast('Erreur',1);}
+}
 /* ---- Niveaux : XP = tees gagnés à vie (le solde dépensé ne baisse pas le niveau) ---- */
 function levelOf(xp){
   let lvl=1,base=0,next=100,i=0;
@@ -1507,7 +1694,7 @@ function aggBadges(rounds){
 const FLBL={stroke:'Stroke Play',stab_brut:'Stableford brut',stab_net:'Stableford net',scramble:'Scramble',chouette:'Chouette'};
 async function renderAccount(){
   if(!S.user){$('account-body').innerHTML='<p class="sub">Connecte-toi depuis l\'accueil.</p>';return;}
-  let acc=S.user, history=[], myRounds=[], frRows=[], frMembers={}, liveFriends=[];
+  let acc=S.user, history=[], myRounds=[], frRows=[], frMembers={}, liveFriends=[], challenges=[];
   if(!S.user.guest&&sb){
     try{
       const m=await sb.from('golf_members').select('id,name,club,gender,hcp_index,tee_color,tees_balance,tees_earned').eq('id',S.user.id).single();
@@ -1533,6 +1720,29 @@ async function renderAccount(){
             .in('member_id',accIds).eq('golf_rounds.round_date',todayISO());
           if(!lv.error)liveFriends=lv.data;
         }
+      }
+      /* ---- défis ---- */
+      const chr=await sb.from('golf_challenges').select('*')
+        .or(`challenger.eq.${S.user.id},challenged.eq.${S.user.id}`)
+        .order('created_at',{ascending:false}).limit(12);
+      if(!chr.error)challenges=chr.data.filter(c=>c.status!=='declined');
+      const missing=[...new Set(challenges.flatMap(c=>[c.challenger,c.challenged]))].filter(x=>x!==S.user.id&&!frMembers[x]);
+      if(missing.length){
+        const ms2=await sb.from('golf_members').select('id,name').in('id',missing);
+        if(!ms2.error)ms2.data.forEach(m=>frMembers[m.id]=m);
+      }
+      /* règlement auto des défis expirés */
+      for(const c of challenges.filter(c=>c.status==='active'&&c.end_date<todayISO())){
+        const [cs,ds]=await Promise.all([bestNetWindow(c.challenger,c.start_date,c.end_date),bestNetWindow(c.challenged,c.start_date,c.end_date)]);
+        try{
+          const r=await sb.rpc('golf_challenge_settle',{p_id:c.id,p_cs:cs,p_ds:ds});
+          if(!r.error){c.status='done';c.winner=r.data.winner;c.challenger_score=cs;c.challenged_score=ds;}
+        }catch(e){}
+      }
+      /* score courant des défis actifs */
+      for(const c of challenges.filter(c=>c.status==='active')){
+        c._cs=await bestNetWindow(c.challenger,c.start_date,todayISO());
+        c._ds=await bestNetWindow(c.challenged,c.start_date,todayISO());
       }
     }catch(e){}
   }
@@ -1637,8 +1847,36 @@ async function renderAccount(){
       if(liveIds.has(fid))return;
       const m=frMembers[fid]||{name:'?'};
       fh+=`<div class="resline"><span>💚 ${m.name} <small style="color:var(--muted);">idx ${m.hcp_index??''}</small></span>
-        <button style="color:var(--muted);font-size:15px;" onclick="removeFriend('${fid}')">✕</button></div>`;
+        <span style="display:flex;gap:12px;align-items:center;">
+          <button style="font-size:17px;" title="Défier — meilleur net sur 7 jours" onclick="challengeFriend('${fid}')">⚔️</button>
+          <button style="color:var(--muted);font-size:15px;" onclick="removeFriend('${fid}')">✕</button>
+        </span></div>`;
     });
+    /* ---- défis ---- */
+    if(challenges.length){
+      fh+='<div style="font-weight:900;font-size:12px;letter-spacing:2px;color:var(--gold);margin:12px 0 2px;">⚔️ DÉFIS · MEILLEUR NET SUR 7 JOURS</div>';
+      challenges.slice(0,6).forEach(c=>{
+        const meCh=c.challenger===S.user.id;
+        const other=frMembers[meCh?c.challenged:c.challenger]||{name:'?'};
+        if(c.status==='pending'&&!meCh){
+          fh+=`<div class="resline"><span>⚔️ <b style="font-size:16px;">${other.name}</b> te défie <small style="color:var(--gold);">${c.stake} pts en jeu</small></span>
+            <span style="display:flex;gap:6px;">
+              <button class="btn btn-volt btn-sm" style="width:auto;padding:8px 14px;" onclick="respondChallenge('${c.id}',true)">✓</button>
+              <button class="btn btn-red btn-sm" style="width:auto;padding:8px 14px;" onclick="respondChallenge('${c.id}',false)">✕</button>
+            </span></div>`;
+        }else if(c.status==='pending'){
+          fh+=`<div class="resline"><span>⚔️ ${other.name}</span><b style="color:var(--muted);font-size:13px;">en attente…</b></div>`;
+        }else if(c.status==='active'){
+          const mine=meCh?c._cs:c._ds, theirs=meCh?c._ds:c._cs;
+          const fin=new Date(c.end_date+'T12:00:00').toLocaleDateString('fr-FR',{day:'numeric',month:'short'});
+          fh+=`<div class="resline"><span>⚔️ vs <b style="font-size:16px;">${other.name}</b><small style="display:block;color:var(--muted);">jusqu'au ${fin} · ${c.stake} pts · carte complète en net</small></span>
+            <b class="num">${mine==null?'—':fmtToPar(mine)} <small style="color:var(--muted);font-weight:600;">/ ${theirs==null?'—':fmtToPar(theirs)}</small></b></div>`;
+        }else{
+          const won=c.winner===S.user.id;
+          fh+=`<div class="resline"><span>${won?'✅ Gagné':(c.winner?'❌ Perdu':'🤝 Égalité')} vs ${other.name}</span><b style="color:${won?'var(--volt)':'var(--muted)'};">${won?'+'+c.stake+' 🏅':''}</b></div>`;
+        }
+      });
+    }
     if(!accepted.length&&!pendingIn.length&&!pendingOut.length)fh+='<div class="pd-empty">Ajoute des membres par leur nom pour suivre leurs scores en live.</div>';
     fh+='</div>';
     html+=fh;
@@ -1657,7 +1895,7 @@ async function renderAccount(){
     html+='<div class="rescard"><div style="font-weight:800;font-size:17px;margin-bottom:6px;">⛳ Mes parties</div><div class="pd-empty">Tes parties apparaîtront ici automatiquement.</div></div>';
   }
   html+='<div class="rescard"><div style="font-weight:800;font-size:17px;margin-bottom:6px;">🎁 Boutique des Points</div>'+
-    PRIZES.map(p=>`<div class="resline"><span>${p[0]}</span><b style="color:var(--gold);">${p[1]} 🏅</b></div>`).join('')+'</div>';
+    (SETTINGS.prizes||[]).map(p=>`<div class="resline"><span>${p[0]}</span><b style="color:var(--gold);">${p[1]} 🏅</b></div>`).join('')+'</div>';
   if(history.length){
     html+='<div class="rescard"><div style="font-weight:800;font-size:17px;margin-bottom:6px;">📜 Points gagnés</div>'+
       history.map(h=>`<div class="resline"><span>${new Date(h.created_at).toLocaleDateString('fr-FR')} · ${h.reason||''}</span><b style="color:var(--gold);">${h.delta>0?'+':''}${h.delta} 🏅</b></div>`).join('')+'</div>';
@@ -1678,7 +1916,7 @@ async function loadCourse(){
 }
 (async()=>{
   show('home');
-  await Promise.all([loadCourse(),restoreSession()]);
+  await Promise.all([loadCourse(),restoreSession(),loadSettings()]);
   const saved=store.get('round');
   if(saved&&saved.date===todayISO()&&saved.units&&saved.units.length){
     S.round=saved;

@@ -53,6 +53,7 @@ footer{position:fixed;bottom:1.6vh;left:4vw;right:4vw;display:flex;justify-conte
     <div class="bt">DOMAINE DE ST CLAIR<small>LEADERBOARD DU JOUR</small></div>
   </div>
   <div style="display:flex;align-items:center;gap:2.5vw;">
+    <div id="mult-badge" style="display:none;background:rgba(212,255,63,.12);border:1px solid rgba(212,255,63,.5);color:var(--volt);border-radius:2vw;padding:.8vh 1.4vw;font-size:1.3vw;font-weight:900;letter-spacing:1px;"></div>
     <div class="live"><span class="dot"></span>LIVE</div>
     <div class="clock num" id="clock"></div>
   </div>
@@ -84,7 +85,7 @@ footer{position:fixed;bottom:1.6vh;left:4vw;right:4vw;display:flex;justify-conte
 const SB_URL="https://hwgekflmucrfboahmtbf.supabase.co";
 const SB_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh3Z2VrZmxtdWNyZmJvYWhtdGJmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzcyNTE2OTgsImV4cCI6MjA5MjgyNzY5OH0.gmJqe_U15nazIiOUZXQmcY4x8n-rDhTRUyMvqDus9X8";
 const sb=supabase.createClient(SB_URL,SB_KEY,{auth:{persistSession:false}});
-let HOLES=[],PAR_TOTAL=72;
+let HOLES=[],PAR_TOTAL=72,SETTINGS={tv_enabled:true,points_multiplier:1,multiplier_label:'',pro_card:null};
 
 function fmt(v){return v===0?'E':(v>0?'+'+v:''+v);}
 function cls(v){return v<0?'neg':(v>0?'pos2':'even');}
@@ -111,7 +112,19 @@ async function loadCourse(){
   const r=await sb.from('golf_courses').select('holes,par').eq('id','st-clair').single();
   if(!r.error){HOLES=r.data.holes;PAR_TOTAL=r.data.par;}
 }
+async function loadSettings(){
+  try{
+    const r=await sb.from('golf_settings').select('tv_enabled,points_multiplier,multiplier_label,pro_card').eq('id',1).single();
+    if(!r.error&&r.data)SETTINGS=r.data;
+  }catch(e){}
+  document.body.style.opacity=SETTINGS.tv_enabled===false?'0':'1';
+  const mb=document.getElementById('mult-badge');
+  if((SETTINGS.points_multiplier||1)>1){mb.style.display='block';mb.textContent='🔥 POINTS ×'+SETTINGS.points_multiplier+(SETTINGS.multiplier_label?' · '+SETTINGS.multiplier_label.toUpperCase():'');}
+  else mb.style.display='none';
+}
 async function refresh(){
+  await loadSettings();
+  if(SETTINGS.tv_enabled===false)return;
   try{
     const today=new Date().toISOString().slice(0,10);
     const r=await sb.from('golf_rounds')
@@ -123,6 +136,10 @@ async function refresh(){
       const st=stats(Array.isArray(p.scores)?p.scores:[],p.coups_rendus);
       players.push({name:p.display_name,hcp:p.hcp_index,opt:p.opt_pot,...st});
     }));
+    if(SETTINGS.pro_card&&SETTINGS.pro_card.active&&Array.isArray(SETTINGS.pro_card.scores)){
+      const st=stats(SETTINGS.pro_card.scores,0);
+      players.push({name:'🎯 '+(SETTINGS.pro_card.name||'Le Pro'),hcp:0,opt:false,pro:true,...st});
+    }
     const rows=players.filter(p=>p.thru>0).sort((a,b)=>a.net-b.net||b.thru-a.thru);
     const lb=document.getElementById('lb');
     if(!rows.length){lb.innerHTML='<div class="empty">En attente des premiers départs… ⛳</div>';}
@@ -130,9 +147,9 @@ async function refresh(){
       let html='',pos=0,prev=null;
       rows.slice(0,12).forEach((p,i)=>{
         if(prev===null||p.net!==prev){pos=i+1;prev=p.net;}
-        html+=`<div class="row ${pos===1?'top1':''}">
+        html+=`<div class="row ${pos===1?'top1':''}" ${p.pro?'style="border-color:rgba(255,94,87,.55);"':''}>
           <span class="pos num">${pos}</span>
-          <span class="nm">${p.name}<small>idx ${p.hcp}${p.birdies?' · '+p.birdies+' 🐦':''}</small></span>
+          <span class="nm">${p.name}<small>${p.pro?'la carte à battre':'idx '+p.hcp}${p.birdies?' · '+p.birdies+' 🐦':''}</small></span>
           <span class="thru">${p.thru===18?'F':'T'+p.thru}</span>
           <span class="sc ${cls(p.brut)}">${fmt(p.brut)}</span>
           <span class="sc ${cls(p.net)}">${fmt(p.net)}</span>
