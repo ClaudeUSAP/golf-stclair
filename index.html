@@ -318,6 +318,7 @@ td.sc-x{background:#000 !important;color:var(--coral) !important;}
       <button class="btn btn-volt" id="menu-resume" onclick="toggleMenu();show('play')">⛳ Reprendre la partie</button>
       <button class="btn btn-dark" onclick="toggleMenu();show('lb')">🏆 Classements</button>
       <button class="btn btn-dark" onclick="toggleMenu();show('cards')">📋 Cartes du groupe</button>
+      <button class="btn btn-dark" onclick="toggleMenu();show('defis')">⚔️ Défis</button>
       <button class="btn btn-dark" onclick="toggleMenu();show('account')">👤 Mon compte & Points</button>
       <button class="btn btn-ghost" onclick="toggleMenu();show('help')">? Aide</button>
       <button class="btn btn-ghost" onclick="toggleMenu();openAdmin()">🔧 Espace club</button>
@@ -398,17 +399,40 @@ td.sc-x{background:#000 !important;color:var(--coral) !important;}
   <button class="btn btn-ghost" onclick="backHome()">← Quitter</button>
 </div>
 
+<!-- ================= ÉTAPE 1 : HUB ================= -->
+<div id="screen-start" class="screen">
+  <div><span class="eyebrow">Étape 1</span><h2>On joue quoi ?</h2></div>
+  <div id="club-banners" style="display:flex;flex-direction:column;gap:10px;"></div>
+  <button class="btn btn-volt" onclick="show('formule')">⛳ Nouvelle partie</button>
+  <div class="panel" style="gap:10px;">
+    <div style="font-weight:800;font-size:17px;">👥 Rejoindre un groupe en cours</div>
+    <div class="sub" style="font-size:13px;">Le marqueur te donne le code affiché sur son écran de jeu — tu suis et saisis depuis ton propre téléphone, tout se synchronise.</div>
+    <div style="display:flex;gap:8px;">
+      <input id="join-code" class="ainp" inputmode="numeric" maxlength="4" placeholder="Code à 4 chiffres" style="text-align:center;font-size:20px;letter-spacing:4px;">
+      <button class="btn btn-dark btn-sm" style="width:auto;padding:12px 20px;" onclick="joinGroup()">Rejoindre</button>
+    </div>
+  </div>
+  <button class="btn btn-dark" onclick="show('defis')">⚔️ Défis <span id="defis-badge" class="badge" style="background:var(--coral);color:#fff;display:none;"></span></button>
+</div>
+
+<!-- ================= DÉFIS ================= -->
+<div id="screen-defis" class="screen">
+  <h2>⚔️ Défis</h2>
+  <p class="sub" style="font-size:14px;">Meilleur score net sur 7 jours, carte complète. Le gagnant prend la mise en points.</p>
+  <div id="defis-body" style="display:flex;flex-direction:column;gap:14px;width:100%;"></div>
+  <button class="btn btn-volt" onclick="backHome()">← Retour</button>
+</div>
+
 <!-- ================= FORMULE ================= -->
 <div id="screen-formule" class="screen">
-  <div><span class="eyebrow">Étape 1/2</span><h2>La formule du jour</h2></div>
-  <div id="club-banners" style="display:flex;flex-direction:column;gap:10px;"></div>
+  <div><span class="eyebrow">Étape 2/3</span><h2>La formule du jour</h2></div>
   <div class="choice-grid" id="formule-grid"></div>
   <button class="btn btn-volt" onclick="gotoPlayers()">Continuer →</button>
 </div>
 
 <!-- ================= JOUEURS ================= -->
 <div id="screen-players" class="screen">
-  <div><span class="eyebrow">Étape 2/2</span><h2>Le groupe</h2></div>
+  <div><span class="eyebrow">Étape 3/3</span><h2>Le groupe</h2></div>
   <p class="sub" id="players-sub">Combien êtes-vous ?</p>
   <div class="choice-grid" id="count-grid" style="grid-template-columns:repeat(4,1fr);"></div>
   <div id="players-list" style="display:flex;flex-direction:column;gap:12px;"></div>
@@ -448,6 +472,7 @@ td.sc-x{background:#000 !important;color:var(--coral) !important;}
     <button class="btn-next" id="btn-next" onclick="nextHole(false)">Trou <span id="next-n"></span> →</button>
   </div>
   <div class="sync-dot" id="sync-dot"></div>
+  <div class="sync-dot" id="gcode" style="color:var(--gold);"></div>
   <div style="display:flex;gap:10px;width:100%;">
     <button class="btn btn-dark btn-sm" style="flex:1;" onclick="show('lb')">🏆 Classements</button>
     <button class="btn btn-dark btn-sm" style="flex:1;" onclick="show('cards')">📋 Cartes</button>
@@ -612,7 +637,7 @@ async function loadSettings(){
   }catch(e){}
 }
 
-const SCREENS=['home','formule','players','play','cards','lb','summary','account','help','admin'];
+const SCREENS=['home','start','defis','formule','players','play','cards','lb','summary','account','help','admin'];
 function show(name){
   SCREENS.forEach(s=>{const el=$('screen-'+s);if(el)el.classList.add('hidden');});
   unhide('screen-'+name);
@@ -620,6 +645,8 @@ function show(name){
   if(name==='home')hide('app-header');else unhide('app-header');
   if(name==='cards')renderGroupCards();
   if(name==='admin')renderAdmin();
+  if(name==='start')renderStart();
+  if(name==='defis')renderDefis();
   if(name==='lb'){refreshField().then(renderLb);renderLb();startLbPoll();}else stopLbPoll();
   if(name==='account')renderAccount();
   window.scrollTo(0,0);
@@ -627,11 +654,11 @@ function show(name){
   $('menu-logout').style.display=S.user?'flex':'none';
   updateHdrUser();
 }
-function backHome(){show(S.round?'play':(S.user?'formule':'home'));}
+function backHome(){show(S.round?'play':(S.user?'start':'home'));}
 function toggleMenu(){$('menu').classList.toggle('hidden');}
 function confirmQuit(){
   if(!S.round){show('home');return;}
-  if(confirm('Quitter la partie en cours ?')){S.round=null;store.set('round',null);show('home');}
+  if(confirm('Quitter la partie en cours ?')){stopRoundSync();S.round=null;store.set('round',null);show('home');}
 }
 function logout(){S.user=null;store.set('session',null);S.round=null;show('home');toast('À bientôt !');}
 function updateHdrUser(){
@@ -735,7 +762,156 @@ async function doAuth(){
   }
   $('auth-go').textContent='Valider';
 }
-function afterLogin(){loadFriends();renderFormuleGrid();show('formule');}
+function afterLogin(){loadFriends();show('start');}
+
+/* ================= ÉTAPE 1 : HUB ================= */
+async function renderStart(){
+  renderFormuleGrid(); /* remplit aussi les bannières club */
+  const badge=$('defis-badge');
+  badge.style.display='none';
+  if(sb&&S.user&&!S.user.guest){
+    try{
+      const r=await sb.from('golf_challenges').select('id').eq('challenged',S.user.id).eq('status','pending');
+      if(!r.error&&r.data.length){badge.textContent=r.data.length;badge.style.display='inline-block';}
+    }catch(e){}
+  }
+}
+
+/* ================= REJOINDRE UN GROUPE (multi-appareils) ================= */
+async function joinGroup(){
+  const code=($('join-code').value||'').trim();
+  if(!/^\d{4}$/.test(code)){toast('Code à 4 chiffres',1);return;}
+  if(!sb){toast('Pas de connexion',1);return;}
+  try{
+    const r=await sb.from('golf_rounds')
+      .select('id,formule,birdie_pot,join_code,golf_round_players(*)')
+      .eq('round_date',todayISO()).eq('status','live').eq('join_code',code)
+      .order('created_at',{ascending:false}).limit(1);
+    if(r.error)throw r.error;
+    if(!r.data.length){toast('Aucun groupe en jeu avec ce code',1);return;}
+    const rd=r.data[0];
+    const units=(rd.golf_round_players||[]).map(p=>({
+      name:p.display_name,ini:p.ini,hcp:p.hcp_index,gender:p.gender,tee:p.tee_color,ph:p.coups_rendus,
+      scores:(Array.isArray(p.scores)?p.scores:[]).concat(Array(18).fill(null)).slice(0,18),
+      members:[{name:p.display_name,opt:p.opt_pot,memberId:p.member_id}],me:true,memberId:p.member_id,dbId:p.id
+    }));
+    if(!units.length){toast('Groupe vide',1);return;}
+    S.round={formule:rd.formule,units,hole:0,birdiePot:rd.birdie_pot,dbId:rd.id,online:true,date:todayISO(),code:rd.join_code,joined:true};
+    persistRound();
+    startRoundSync();
+    show('play');
+    toast('Groupe rejoint 👥 — synchronisé');
+  }catch(e){toast('Erreur réseau',1);}
+}
+
+/* sync entre téléphones du même groupe */
+let roundSyncTimer=null;
+function startRoundSync(){
+  stopRoundSync();
+  roundSyncTimer=setInterval(async()=>{
+    const r=S.round;
+    if(!sb||!r||!r.dbId)return;
+    try{
+      const q=await sb.from('golf_round_players').select('id,scores').eq('round_id',r.dbId);
+      if(q.error){setSync('err');return;}
+      let changed=false;
+      q.data.forEach(row=>{
+        const u=r.units.find(x=>x.dbId===row.id);
+        if(!u)return;
+        if(Date.now()-(u._ts||0)<7000)return; /* édition locale récente : priorité locale */
+        const norm=(Array.isArray(row.scores)?row.scores:[]).concat(Array(18).fill(null)).slice(0,18);
+        if(JSON.stringify(norm)!==JSON.stringify(u.scores)){u.scores=norm;changed=true;}
+      });
+      setSync('ok');
+      if(changed&&!$('screen-play').classList.contains('hidden'))renderPlay();
+    }catch(e){setSync('err');}
+  },8000);
+}
+function stopRoundSync(){if(roundSyncTimer){clearInterval(roundSyncTimer);roundSyncTimer=null;}}
+
+/* ================= ÉCRAN DÉFIS ================= */
+async function renderDefis(){
+  const body=$('defis-body');
+  if(!S.user||S.user.guest){
+    body.innerHTML='<div class="rescard"><div class="pd-empty">Les défis sont réservés aux membres — crée ton compte depuis l\'accueil (nom + PIN), c\'est gratuit.</div></div>';
+    return;
+  }
+  body.innerHTML='<div class="rescard"><div class="pd-empty">Chargement…</div></div>';
+  try{
+    const names={};
+    const [chr,fr]=await Promise.all([
+      sb.from('golf_challenges').select('*').or(`challenger.eq.${S.user.id},challenged.eq.${S.user.id}`).order('created_at',{ascending:false}).limit(15),
+      sb.from('golf_friends').select('requester,addressee,status').or(`requester.eq.${S.user.id},addressee.eq.${S.user.id}`).eq('status','accepted')
+    ]);
+    const challenges=(chr.error?[]:chr.data).filter(c=>c.status!=='declined');
+    const friendIds=(fr.error?[]:fr.data).map(f=>f.requester===S.user.id?f.addressee:f.requester);
+    const ids=[...new Set([...friendIds,...challenges.flatMap(c=>[c.challenger,c.challenged])])].filter(x=>x!==S.user.id);
+    if(ids.length){
+      const ms=await sb.from('golf_members').select('id,name,hcp_index').in('id',ids);
+      if(!ms.error)ms.data.forEach(m=>names[m.id]=m);
+    }
+    /* règlement auto des défis expirés */
+    for(const c of challenges.filter(c=>c.status==='active'&&c.end_date<todayISO())){
+      const [cs,ds]=await Promise.all([bestNetWindow(c.challenger,c.start_date,c.end_date),bestNetWindow(c.challenged,c.start_date,c.end_date)]);
+      try{
+        const r=await sb.rpc('golf_challenge_settle',{p_id:c.id,p_cs:cs,p_ds:ds});
+        if(!r.error){c.status='done';c.winner=r.data.winner;}
+      }catch(e){}
+    }
+    for(const c of challenges.filter(c=>c.status==='active')){
+      c._cs=await bestNetWindow(c.challenger,c.start_date,todayISO());
+      c._ds=await bestNetWindow(c.challenged,c.start_date,todayISO());
+    }
+    let html='';
+    const pendIn=challenges.filter(c=>c.status==='pending'&&c.challenged===S.user.id);
+    const pendOut=challenges.filter(c=>c.status==='pending'&&c.challenger===S.user.id);
+    const active=challenges.filter(c=>c.status==='active');
+    const done=challenges.filter(c=>c.status==='done').slice(0,5);
+    if(pendIn.length){
+      html+='<div class="rescard"><div style="font-weight:800;font-size:17px;margin-bottom:6px;">📩 On te défie !</div>'+
+        pendIn.map(c=>`<div class="resline"><span>⚔️ <b style="font-size:16px;">${(names[c.challenger]||{}).name||'?'}</b> <small style="color:var(--gold);">${c.stake} pts en jeu</small></span>
+          <span style="display:flex;gap:6px;">
+            <button class="btn btn-volt btn-sm" style="width:auto;padding:8px 14px;" onclick="respondChallenge('${c.id}',true)">✓ Relever</button>
+            <button class="btn btn-red btn-sm" style="width:auto;padding:8px 14px;" onclick="respondChallenge('${c.id}',false)">✕</button>
+          </span></div>`).join('')+'</div>';
+    }
+    if(active.length){
+      html+='<div class="rescard"><div style="font-weight:800;font-size:17px;margin-bottom:6px;">🔥 En cours</div>'+
+        active.map(c=>{
+          const meCh=c.challenger===S.user.id;
+          const other=(names[meCh?c.challenged:c.challenger]||{}).name||'?';
+          const mine=meCh?c._cs:c._ds, theirs=meCh?c._ds:c._cs;
+          const fin=new Date(c.end_date+'T12:00:00').toLocaleDateString('fr-FR',{day:'numeric',month:'short'});
+          return `<div class="resline"><span>vs <b style="font-size:16px;">${other}</b><small style="display:block;color:var(--muted);">jusqu'au ${fin} · ${c.stake} pts</small></span>
+            <b class="num">${mine==null?'—':fmtToPar(mine)} <small style="color:var(--muted);font-weight:600;">/ ${theirs==null?'—':fmtToPar(theirs)}</small></b></div>`;
+        }).join('')+'</div>';
+    }
+    /* défier un ami */
+    const busy=new Set(challenges.filter(c=>c.status==='pending'||c.status==='active').flatMap(c=>[c.challenger,c.challenged]));
+    html+='<div class="rescard"><div style="font-weight:800;font-size:17px;margin-bottom:6px;">🎯 Défier un ami</div>'+
+      (friendIds.length?friendIds.map(fid=>{
+        const m=names[fid]||{name:'?'};
+        const b=busy.has(fid);
+        return `<div class="resline"><span>💚 ${m.name} <small style="color:var(--muted);">idx ${m.hcp_index??''}</small></span>
+          ${b?'<b style="color:var(--muted);font-size:13px;">défi en cours</b>':`<button class="btn btn-dark btn-sm" style="width:auto;padding:9px 16px;" onclick="challengeFriend('${fid}')">⚔️ Défier</button>`}</div>`;
+      }).join(''):'<div class="pd-empty">Ajoute des amis depuis Mon compte pour les défier.</div>')+
+      (pendOut.length?pendOut.map(c=>`<div class="resline"><span>⚔️ ${(names[c.challenged]||{}).name||'?'}</span><b style="color:var(--muted);font-size:13px;">en attente…</b></div>`).join(''):'')+'</div>';
+    if(done.length){
+      html+='<div class="rescard"><div style="font-weight:800;font-size:17px;margin-bottom:6px;">📜 Terminés</div>'+
+        done.map(c=>{
+          const meCh=c.challenger===S.user.id;
+          const other=(names[meCh?c.challenged:c.challenger]||{}).name||'?';
+          const won=c.winner===S.user.id;
+          return `<div class="resline"><span>${won?'✅ Gagné':(c.winner?'❌ Perdu':'🤝 Égalité')} vs ${other}</span><b style="color:${won?'var(--volt)':'var(--muted)'};">${won?'+'+c.stake+' 🏅':''}</b></div>`;
+        }).join('')+'</div>';
+    }
+    body.innerHTML=html;
+  }catch(e){body.innerHTML='<div class="rescard"><div class="pd-empty">Erreur réseau — réessaie.</div></div>';}
+}
+function refreshChallengeViews(){
+  if(!$('screen-defis').classList.contains('hidden'))renderDefis();
+  else if(!$('screen-account').classList.contains('hidden'))renderAccount();
+}
 
 /* ================= AMIS ================= */
 let FRIENDS=new Set();
@@ -983,14 +1159,15 @@ async function startRound(){
     units=players.map(p=>({name:p.name,ini:p.ini,hcp:p.hcp,gender:p.gender,tee:p.tee,ph:p.ph,
       scores:Array(18).fill(null),members:[p],me:true,memberId:p.memberId}));
   }
-  S.round={formule:S.setup.formule,units,hole:0,birdiePot:S.setup.birdiePot,dbId:null,online:false,date:todayISO()};
+  const joinCode=String(Math.floor(1000+Math.random()*9000));
+  S.round={formule:S.setup.formule,units,hole:0,birdiePot:S.setup.birdiePot,dbId:null,online:false,date:todayISO(),code:joinCode};
   persistRound();
   show('play');
   toast('Bonne partie ! ⛳');
   /* enregistrement DB en arrière-plan */
   if(sb){
     try{
-      const r=await sb.from('golf_rounds').insert({course_id:COURSE.id,formule:S.round.formule,birdie_pot:S.round.birdiePot}).select('id').single();
+      const r=await sb.from('golf_rounds').insert({course_id:COURSE.id,formule:S.round.formule,birdie_pot:S.round.birdiePot,join_code:joinCode}).select('id').single();
       if(r.error)throw r.error;
       S.round.dbId=r.data.id;
       const rows=units.map(u=>({round_id:r.data.id,member_id:u.memberId||null,display_name:u.name,ini:u.ini,
@@ -1001,6 +1178,7 @@ async function startRound(){
       pr.data.forEach((row,i)=>units[i].dbId=row.id);
       S.round.online=true;
       persistRound();
+      startRoundSync();
       setSync('ok');
     }catch(e){setSync('err');toast('Mode hors-ligne — scores locaux',1);}
   }else setSync('err');
@@ -1111,6 +1289,7 @@ function renderPlay(){
   $('next-n').textContent=r.hole<17?r.hole+2:'FIN';
   $('btn-next').classList.toggle('ready',holeDone);
   $('btn-finish').style.display=anyScores?'flex':'none';
+  $('gcode').textContent=r.code&&r.online!==false?('👥 CODE GROUPE : '+r.code+' — les autres peuvent rejoindre et saisir'):'';
   persistRound();
 }
 function renderGroupLive(){
@@ -1133,11 +1312,11 @@ function rowBump(i,d){
   let sc=u.scores[r.hole];
   if(sc==null||sc==='X')sc=h.par+d; else sc=Math.max(1,Math.min(14,sc+d));
   if(sc<1)sc=1;
-  u.scores[r.hole]=sc;
+  u.scores[r.hole]=sc;u._ts=Date.now();
   saveUnit(u);renderPlay();
 }
-function rowPar(i){const u=S.round.units[i];u.scores[S.round.hole]=HOLES[S.round.hole].par;saveUnit(u);renderPlay();}
-function rowX(i){const u=S.round.units[i];u.scores[S.round.hole]='X';saveUnit(u);renderPlay();}
+function rowPar(i){const u=S.round.units[i];u.scores[S.round.hole]=HOLES[S.round.hole].par;u._ts=Date.now();saveUnit(u);renderPlay();}
+function rowX(i){const u=S.round.units[i];u.scores[S.round.hole]='X';u._ts=Date.now();saveUnit(u);renderPlay();}
 function nextHole(force){
   const r=S.round;
   const holeDone=r.units.every(u=>u.scores[r.hole]!=null);
@@ -1340,6 +1519,7 @@ async function finishRound(){
   const r=S.round;
   const incomplete=r.units.some(u=>u.scores.some(s=>s==null));
   if(incomplete&&!confirm('Des trous ne sont pas remplis (comptés ✕). Terminer quand même ?'))return;
+  stopRoundSync();
   r.units.forEach(u=>{for(let i=0;i<18;i++)if(u.scores[i]==null)u.scores[i]='X';});
   await flushSaves();
   await refreshField();
@@ -1623,7 +1803,7 @@ async function challengeFriend(fid){
   try{
     const r=await sb.rpc('golf_challenge_create',{p_me:S.user.id,p_pin:s.pin,p_friend:fid});
     if(r.error)throw r.error;
-    toast('Défi envoyé ⚔️ — meilleur net sur 7 jours');renderAccount();
+    toast('Défi envoyé ⚔️ — meilleur net sur 7 jours');refreshChallengeViews();
   }catch(e){
     const msg={DEJA_EN_COURS:'Défi déjà en cours avec ce joueur',PAS_AMIS:'Vous devez être amis',PIN_FAUX:'Reconnecte-toi'}[(e.message||'').trim()]||'Erreur';
     toast(msg,1);
@@ -1635,7 +1815,7 @@ async function respondChallenge(id,accept){
     const r=await sb.rpc('golf_challenge_respond',{p_me:S.user.id,p_pin:s.pin,p_id:id,p_accept:accept});
     if(r.error)throw r.error;
     toast(accept?'Défi accepté ⚔️ — 7 jours pour signer ton meilleur net !':'Défi refusé');
-    renderAccount();
+    refreshChallengeViews();
   }catch(e){toast('Erreur',1);}
 }
 /* ---- Niveaux : XP = tees gagnés à vie (le solde dépensé ne baisse pas le niveau) ---- */
@@ -1921,11 +2101,12 @@ async function loadCourse(){
   if(saved&&saved.date===todayISO()&&saved.units&&saved.units.length){
     S.round=saved;
     if(S.user)loadFriends();
+    if(S.round.dbId)startRoundSync();
     show('play');
     toast('Partie en cours reprise ⛳');
   }else{
     if(saved)store.set('round',null);
-    if(S.user){loadFriends();renderFormuleGrid();show('formule');}
+    if(S.user){loadFriends();show('start');}
   }
   if('serviceWorker' in navigator){try{navigator.serviceWorker.register('sw.js');}catch(e){}}
 })();
