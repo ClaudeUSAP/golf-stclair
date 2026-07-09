@@ -4,6 +4,13 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>St Clair Live Scoring</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0c1017">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="St Clair">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Archivo:wght@400;600;700;900&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
@@ -574,7 +581,7 @@ function backHome(){show(S.round?'play':(S.user?'formule':'home'));}
 function toggleMenu(){$('menu').classList.toggle('hidden');}
 function confirmQuit(){
   if(!S.round){show('home');return;}
-  if(confirm('Quitter la partie en cours ?')){S.round=null;show('home');}
+  if(confirm('Quitter la partie en cours ?')){S.round=null;store.set('round',null);show('home');}
 }
 function logout(){S.user=null;store.set('session',null);S.round=null;show('home');toast('À bientôt !');}
 function updateHdrUser(){
@@ -918,7 +925,8 @@ async function startRound(){
     units=players.map(p=>({name:p.name,ini:p.ini,hcp:p.hcp,gender:p.gender,tee:p.tee,ph:p.ph,
       scores:Array(18).fill(null),members:[p],me:true,memberId:p.memberId}));
   }
-  S.round={formule:S.setup.formule,units,hole:0,birdiePot:S.setup.birdiePot,dbId:null,online:false};
+  S.round={formule:S.setup.formule,units,hole:0,birdiePot:S.setup.birdiePot,dbId:null,online:false,date:todayISO()};
+  persistRound();
   show('play');
   toast('Bonne partie ! ⛳');
   /* enregistrement DB en arrière-plan */
@@ -934,10 +942,14 @@ async function startRound(){
       if(pr.error)throw pr.error;
       pr.data.forEach((row,i)=>units[i].dbId=row.id);
       S.round.online=true;
+      persistRound();
       setSync('ok');
     }catch(e){setSync('err');toast('Mode hors-ligne — scores locaux',1);}
   }else setSync('err');
 }
+/* persistance : la partie survit au rechargement / verrouillage du téléphone */
+function persistRound(){store.set('round',S.round);}
+window.addEventListener('online',()=>{if(S.round&&S.round.online){flushSaves();setSync('ok');}});
 function setSync(state){
   const el=$('sync-dot');
   if(!el)return;
@@ -1041,6 +1053,7 @@ function renderPlay(){
   $('next-n').textContent=r.hole<17?r.hole+2:'FIN';
   $('btn-next').classList.toggle('ready',holeDone);
   $('btn-finish').style.display=anyScores?'flex':'none';
+  persistRound();
 }
 function renderGroupLive(){
   const r=S.round;
@@ -1340,6 +1353,7 @@ async function finishRound(){
   html=`<div class="hero-award"><div class="lbl">MEILLEUR CLASSEMENT DU GROUPE</div><div class="big">${best}ᵉ<span style="font-size:24px;color:var(--muted);"> / ${n}</span></div><div class="lbl" style="margin-top:6px;">PLATEAU DU JOUR : ${n} JOUEUR${n>1?'S':''}</div></div>`+html;
   $('summary-results').innerHTML=html;
   S.round=null;
+  store.set('round',null);
   show('summary');
 }
 function newRound(){show('formule');renderFormuleGrid();}
@@ -1542,7 +1556,17 @@ async function loadCourse(){
 (async()=>{
   show('home');
   await Promise.all([loadCourse(),restoreSession()]);
-  if(S.user){loadFriends();renderFormuleGrid();show('formule');}
+  const saved=store.get('round');
+  if(saved&&saved.date===todayISO()&&saved.units&&saved.units.length){
+    S.round=saved;
+    if(S.user)loadFriends();
+    show('play');
+    toast('Partie en cours reprise ⛳');
+  }else{
+    if(saved)store.set('round',null);
+    if(S.user){loadFriends();renderFormuleGrid();show('formule');}
+  }
+  if('serviceWorker' in navigator){try{navigator.serviceWorker.register('sw.js');}catch(e){}}
 })();
 </script>
 </body>
