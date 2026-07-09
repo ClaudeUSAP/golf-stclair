@@ -295,7 +295,7 @@ td.sc-x{background:#000 !important;color:var(--coral) !important;}
       <button class="btn btn-volt" id="menu-resume" onclick="toggleMenu();show('play')">⛳ Reprendre la partie</button>
       <button class="btn btn-dark" onclick="toggleMenu();show('lb')">🏆 Classements</button>
       <button class="btn btn-dark" onclick="toggleMenu();show('cards')">📋 Cartes du groupe</button>
-      <button class="btn btn-dark" onclick="toggleMenu();show('account')">👤 Mon compte & Tees</button>
+      <button class="btn btn-dark" onclick="toggleMenu();show('account')">👤 Mon compte & Points</button>
       <button class="btn btn-ghost" onclick="toggleMenu();show('help')">? Aide</button>
       <button class="btn btn-red" id="menu-logout" onclick="toggleMenu();logout()">Se déconnecter</button>
       <button class="btn btn-red" onclick="toggleMenu();confirmQuit()">✕ Quitter la partie</button>
@@ -317,7 +317,7 @@ td.sc-x{background:#000 !important;color:var(--coral) !important;}
   </div>
   <div class="home-badge"><span class="live-dot"></span> SCORING LIVE · PARCOURS 18 TROUS</div>
   <h1>Ta carte de score,<br>en direct.</h1>
-  <p class="sub">Scores du groupe, classement live du club,<br>tees à gagner et Prime aux Birdies. 🏅</p>
+  <p class="sub">Scores du groupe, classement live du club,<br>points à gagner et Prime aux Birdies. 🏅</p>
   <div style="width:100%;display:flex;flex-direction:column;gap:12px;margin-top:6px;">
     <button class="btn btn-volt" onclick="openAuth('guest')">Jouer en invité</button>
     <button class="btn btn-dark" onclick="openAuth('login')">🔑 Membre — Connexion</button>
@@ -453,7 +453,7 @@ td.sc-x{background:#000 !important;color:var(--coral) !important;}
   <h1>Partie terminée !</h1>
   <div id="summary-results" style="display:flex;flex-direction:column;gap:14px;width:100%;"></div>
   <button class="btn btn-volt" onclick="newRound()">Nouvelle partie</button>
-  <button class="btn btn-dark" onclick="show('account')">👤 Mon compte & Tees</button>
+  <button class="btn btn-dark" onclick="show('account')">👤 Mon compte & Points</button>
 </div>
 
 <!-- ================= ACCOUNT ================= -->
@@ -466,14 +466,14 @@ td.sc-x{background:#000 !important;color:var(--coral) !important;}
 <!-- ================= HELP ================= -->
 <div id="screen-help" class="screen">
   <h2>? Aide</h2>
-  <div class="help-block"><b>Compte membre</b> — nom + code PIN à 4 chiffres. Ton profil (club, index, boules), ton historique de parties et tes tees sont conservés. Chaque joueur du groupe peut lier son compte au départ (bouton 🔑) pour avoir lui aussi son historique et ses tees. En invité, rien n'est enregistré.</div>
+  <div class="help-block"><b>Compte membre</b> — nom + code PIN à 4 chiffres. Ton profil (club, index, boules), ton historique de parties et tes points sont conservés. Chaque joueur du groupe peut lier son compte au départ (bouton 🔑) pour avoir lui aussi son historique et ses points. En invité, rien n'est enregistré.</div>
   <div class="help-block"><b>👥 Amis</b> — depuis Mon compte, ajoute un membre par son nom. Dès qu'il accepte, tu le suis en live : ses scores du jour apparaissent sur ta fiche (● EN JEU) et il est marqué 💚 dans le leaderboard.</div>
   <div class="help-block"><b>Coups rendus (WHS / ffgolf)</b> — calculés automatiquement avec les données officielles du parcours : <b>index × (slope ÷ 113) + (SSS − par)</b>, selon tes boules de départ et ton genre. Exemple : index 18,4 · boules jaunes · homme → 18,4 × 138/113 + (68,2 − 72) = <b>19 coups rendus</b>, répartis trou par trou selon le HCP de chaque trou.</div>
   <div class="help-block"><b>Saisie</b> — tous les scores du groupe se rentrent sur le même écran, trou par trou. <b>PAR</b> en un geste, <b>+ / −</b> pour ajuster, <b>✕</b> = balle ramassée. Quand tout le monde a son score, le classement du groupe apparaît en haut et le trou suivant s'allume. Tout est sauvegardé en direct.</div>
   <div class="help-block"><b>Stroke Play</b> — total des coups, classements brut et net. <b>Stableford</b> — par = 2 pts, birdie = 3, eagle = 4, bogey = 1 ; en net les coups rendus s'ajoutent trou par trou. <b>Scramble à 2</b> — 1 balle par équipe, index d'équipe = 25 % du cumul.</div>
   <div class="help-block"><b>La Chouette (2-3-4 joueurs)</b> — points distribués à chaque trou en net : à 3 joueurs, le fameux <b>4-2-0</b>. Égalité en tête : 3-3-0 ; égalité 2ᵉ place : 4-1-1 ; triple égalité : 2-2-2. À 2 joueurs : 2-0 ; à 4 : 6-4-2-0.</div>
-  <div class="help-block"><b>🏅 Les Tees</b> — 1ᵉʳ = 10×N, 2ᵉ = 6×N, 3ᵉ = 4×N, autres = N (N = joueurs du jour) + 5 tees par birdie. Crédités automatiquement sur ton compte membre. À échanger au club-house ou à convertir en avance pour la Grande Compétition de fin d'année.</div>
-  <div class="help-block"><b>📈 Niveaux & badges</b> — chaque tee gagné compte pour ton niveau, à vie : dépenser à la boutique ne te fait pas redescendre. Les badges se débloquent automatiquement avec tes cartes (premier birdie, eagle, sous les 90, birdie sur les 18 trous…). Le classement <b>Saison</b> = total de tees gagnés dans l'année.</div>
+  <div class="help-block"><b>🏅 Les Points</b> — 1ᵉʳ = 10×N, 2ᵉ = 6×N, 3ᵉ = 4×N, autres = N (N = joueurs du jour) + 5 points par birdie. Crédités automatiquement sur ton compte membre. À échanger au club-house ou à convertir en avance pour la Grande Compétition de fin d'année.</div>
+  <div class="help-block"><b>📈 Niveaux & badges</b> — chaque point gagné compte pour ton niveau, à vie : dépenser à la boutique ne te fait pas redescendre. Les badges se débloquent automatiquement avec tes cartes (premier birdie, eagle, sous les 90, birdie sur les 18 trous…). Le classement <b>Saison</b> = total de points gagnés dans l'année.</div>
   <div class="help-block"><b>🗺️ Ringer</b> — ton meilleur score sur chaque trou, cumulé sur la saison. Chaque partie peut améliorer ta carte éclectique : le classement Ringer du club se joue toute l'année.</div>
   <div class="help-block"><b>🐦 Prime aux Birdies</b> — mise de 5 € par participant. Cagnotte = 5 € × participants du jour, partagée au prorata des parts : <b>birdie = 1 part, eagle = 3 parts</b>. Aucun birdie ? Reportée au lendemain.</div>
   <button class="btn btn-volt" onclick="backHome()">← Retour</button>
@@ -589,8 +589,8 @@ function openAuth(mode,target){
   authMode=mode;linkTarget=target??null;
   const T={guest:['Invité','Tes infos du jour — rien n\'est enregistré'],
            login:['Connexion','Nom + ton code PIN'],
-           register:['Créer mon compte','Ton profil est conservé : club, index, boules, tees 🏅'],
-           link:['Lier un membre','Le joueur entre son nom + son PIN : historique et tees pour lui aussi']}[mode];
+           register:['Créer mon compte','Ton profil est conservé : club, index, boules, points 🏅'],
+           link:['Lier un membre','Le joueur entre son nom + son PIN : historique et points pour lui aussi']}[mode];
   $('auth-title').textContent=T[0];$('auth-sub').textContent=T[1];
   const reg=mode==='register',gst=mode==='guest',lgn=mode==='login'||mode==='link';
   $('f-pin').classList.toggle('hidden',gst);
@@ -1135,7 +1135,7 @@ function renderSaisonHtml(){
       <span class="lb-score even num">${m.tees_earned} 🏅</span>
     </div>`;
   });
-  $('lb-list').innerHTML=html||'<div class="lb-row"><span class="lb-name">Les tees gagnés en partie feront le classement de la saison.</span></div>';
+  $('lb-list').innerHTML=html||'<div class="lb-row"><span class="lb-name">Les points gagnés en partie feront le classement de la saison.</span></div>';
 }
 /* ---- Ringer (meilleur score cumulé par trou, saison) ---- */
 async function loadRinger(){
@@ -1316,7 +1316,7 @@ async function finishRound(){
       <div class="resline"><span>Classement du jour</span><b class="num">${rk}ᵉ / ${n}</b></div>
       <div class="resline"><span>Score</span><b>${scoreLine}</b></div>
       <div class="resline"><span>Birdies / Eagles</span><b>${st.birdies} 🐦${st.eagles?' · '+st.eagles+' 🦅':''}</b></div>
-      <div class="resline"><span>Tees gagnés${teesSaved}</span><b style="color:var(--gold);">+${tees} 🏅</b></div>
+      <div class="resline"><span>Points gagnés${teesSaved}</span><b style="color:var(--gold);">+${tees} 🏅</b></div>
       ${potInfo&&r.birdiePot?`<div class="resline"><span>Prime aux Birdies${kOpt?` (${uShares} part${uShares>1?'s':''})`:' (non inscrit)'}</span><b style="color:var(--volt);">${potWin>0?potWin+' €':'—'}</b></div>`:''}
     </div>`;
   }
@@ -1424,10 +1424,10 @@ async function renderAccount(){
   let html=`<div class="hero-award"><div class="lbl">${acc.name.toUpperCase()}${acc.club?' · '+acc.club.toUpperCase():''}</div>
   <div class="big">NIVEAU ${L.lvl}</div>
   <div class="lvl-bar"><i style="width:${L.pct}%"></i></div>
-  <div class="lbl" style="margin-top:8px;">${xp} TEES GAGNÉS · NIVEAU ${L.lvl+1} À ${L.next}</div>
+  <div class="lbl" style="margin-top:8px;">${xp} POINTS GAGNÉS · NIVEAU ${L.lvl+1} À ${L.next}</div>
   <div style="font-size:16px;margin-top:12px;color:var(--gold);font-weight:900;">Solde boutique : ${acc.tees_balance??0} 🏅</div>
   <div style="font-size:14px;margin-top:8px;color:var(--muted);">Index ${acc.hcp_index} · ${t.label} ${t.dist} m · ${playingHcp(acc.hcp_index||0,acc.gender||'H',acc.tee_color||'jaune')} coups rendus à St Clair</div>
-  ${S.user.guest?'<div style="font-size:13px;margin-top:8px;color:var(--muted);">Mode invité — crée un compte pour cumuler tes tees.</div>':''}</div>`;
+  ${S.user.guest?'<div style="font-size:13px;margin-top:8px;color:var(--muted);">Mode invité — crée un compte pour cumuler tes points.</div>':''}</div>`;
   /* ---- badges ---- */
   if(!S.user.guest){
     const agg=aggBadges(myRounds);
@@ -1507,10 +1507,10 @@ async function renderAccount(){
   }else if(!S.user.guest){
     html+='<div class="rescard"><div style="font-weight:800;font-size:17px;margin-bottom:6px;">⛳ Mes parties</div><div class="pd-empty">Tes parties apparaîtront ici automatiquement.</div></div>';
   }
-  html+='<div class="rescard"><div style="font-weight:800;font-size:17px;margin-bottom:6px;">🎁 Boutique des Tees</div>'+
+  html+='<div class="rescard"><div style="font-weight:800;font-size:17px;margin-bottom:6px;">🎁 Boutique des Points</div>'+
     PRIZES.map(p=>`<div class="resline"><span>${p[0]}</span><b style="color:var(--gold);">${p[1]} 🏅</b></div>`).join('')+'</div>';
   if(history.length){
-    html+='<div class="rescard"><div style="font-weight:800;font-size:17px;margin-bottom:6px;">📜 Tees gagnés</div>'+
+    html+='<div class="rescard"><div style="font-weight:800;font-size:17px;margin-bottom:6px;">📜 Points gagnés</div>'+
       history.map(h=>`<div class="resline"><span>${new Date(h.created_at).toLocaleDateString('fr-FR')} · ${h.reason||''}</span><b style="color:var(--gold);">${h.delta>0?'+':''}${h.delta} 🏅</b></div>`).join('')+'</div>';
   }
   $('account-body').innerHTML=html;
