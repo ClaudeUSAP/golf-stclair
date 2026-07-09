@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>St Clair — Leaderboard du jour</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Archivo:wght@600;700;900&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<style>
+:root{--bg:#0c1017;--panel:#141b26;--card:#1a2332;--line:#2a3649;--text:#f2f6fb;--muted:#8b98ab;--volt:#d4ff3f;--coral:#ff5e57;--gold:#ffc94d;--blue:#4f9dff;}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'Archivo',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;padding:3vh 4vw;overflow:hidden;}
+.num{font-family:'Space Grotesk',monospace;font-weight:700;}
+header{display:flex;align-items:center;justify-content:space-between;margin-bottom:3vh;}
+.brand{display:flex;align-items:center;gap:18px;}
+.brand .bt{font-weight:900;font-size:2.6vw;letter-spacing:1px;}
+.brand .bt small{display:block;color:var(--volt);font-size:1vw;letter-spacing:5px;font-weight:900;}
+.live{display:flex;align-items:center;gap:12px;font-size:1.4vw;font-weight:900;color:var(--coral);letter-spacing:2px;}
+.dot{width:1vw;height:1vw;border-radius:50%;background:var(--coral);animation:blink 1.3s infinite;}
+@keyframes blink{50%{opacity:.2;}}
+.clock{font-family:'Space Grotesk';font-size:2vw;color:var(--muted);}
+.wrap{display:grid;grid-template-columns:2.2fr 1fr;gap:2vw;align-items:start;}
+.lb{display:flex;flex-direction:column;gap:1vh;}
+.hd{display:flex;padding:0 1.4vw;font-size:1vw;letter-spacing:2px;font-weight:900;color:var(--muted);}
+.row{display:flex;align-items:center;background:var(--card);border:1px solid var(--line);border-radius:1.2vw;padding:1.4vh 1.4vw;font-size:1.7vw;font-weight:800;}
+.row.top1{background:linear-gradient(135deg,rgba(255,201,77,.16),var(--card));border-color:rgba(255,201,77,.5);}
+.pos{width:6%;font-family:'Space Grotesk';color:var(--volt);font-size:2vw;}
+.nm{flex:1;}
+.nm small{color:var(--muted);font-weight:600;font-size:1.1vw;margin-left:.8vw;}
+.thru{width:10%;text-align:center;color:var(--muted);font-size:1.3vw;}
+.sc{width:13%;text-align:right;font-family:'Space Grotesk';font-size:2vw;}
+.neg{color:var(--coral);} .pos2{color:var(--blue);} .even{color:var(--text);}
+.side{display:flex;flex-direction:column;gap:2vh;}
+.pot{background:linear-gradient(120deg,#2a2410,#1a1a10);border:1px solid rgba(255,201,77,.5);border-radius:1.4vw;padding:2.4vh 1.6vw;color:var(--gold);}
+.pot .t{font-size:1.3vw;font-weight:900;letter-spacing:1px;}
+.pot .a{font-family:'Space Grotesk';font-size:4vw;font-weight:700;line-height:1.15;}
+.pot .d{font-size:1.1vw;color:#c9b06a;margin-top:.6vh;font-weight:700;}
+.birdies{background:var(--card);border:1px solid var(--line);border-radius:1.4vw;padding:2vh 1.6vw;}
+.birdies .t{font-size:1.2vw;font-weight:900;letter-spacing:2px;color:var(--muted);margin-bottom:1.2vh;}
+.bl{display:flex;justify-content:space-between;font-size:1.4vw;font-weight:800;padding:.7vh 0;border-bottom:1px solid var(--line);}
+.bl:last-child{border-bottom:none;}
+.bl .eur{font-family:'Space Grotesk';color:var(--gold);}
+.qr{background:var(--panel);border:1px dashed var(--line);border-radius:1.4vw;padding:2vh 1.6vw;text-align:center;color:var(--muted);font-size:1.2vw;font-weight:700;line-height:1.5;}
+.qr b{color:var(--volt);}
+.empty{color:var(--muted);font-size:1.8vw;font-weight:700;text-align:center;padding:8vh 0;}
+footer{position:fixed;bottom:1.6vh;left:4vw;right:4vw;display:flex;justify-content:space-between;font-size:1vw;color:#39445a;font-weight:700;letter-spacing:1px;}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">
+    <svg viewBox="0 0 64 64" style="width:4vw;border-radius:.8vw;"><rect width="64" height="64" rx="12" fill="#111"/><text x="8" y="34" font-family="Arial Black" font-weight="900" font-size="22" fill="#fff">G<tspan fill="#8dc63f">O</tspan></text><text x="8" y="52" font-family="Arial Black" font-weight="900" font-size="22" fill="#fff">LF</text></svg>
+    <div class="bt">DOMAINE DE ST CLAIR<small>LEADERBOARD DU JOUR</small></div>
+  </div>
+  <div style="display:flex;align-items:center;gap:2.5vw;">
+    <div class="live"><span class="dot"></span>LIVE</div>
+    <div class="clock num" id="clock"></div>
+  </div>
+</header>
+
+<div class="wrap">
+  <div>
+    <div class="hd"><span style="width:6%;">#</span><span style="flex:1;">JOUEUR</span><span style="width:10%;text-align:center;">THRU</span><span style="width:13%;text-align:right;">BRUT</span><span style="width:13%;text-align:right;">NET</span></div>
+    <div class="lb" id="lb"><div class="empty">En attente des premiers départs… ⛳</div></div>
+  </div>
+  <div class="side">
+    <div class="pot" id="pot" style="display:none;">
+      <div class="t">🐦 CAGNOTTE BIRDIES</div>
+      <div class="a" id="pot-a">0 €</div>
+      <div class="d" id="pot-d"></div>
+    </div>
+    <div class="birdies" id="birdies" style="display:none;">
+      <div class="t">LES OISEAUX DU JOUR</div>
+      <div id="birdies-list"></div>
+    </div>
+    <div class="qr">Scannez le QR code au départ<br>pour rejoindre le <b>livescoring</b><br>golf.usathleticperformance.com</div>
+  </div>
+</div>
+
+<footer><span>GOLF DU DOMAINE DE ST CLAIR — ANNONAY</span><span>PAR 72 · LIVESCORING OFFICIEL DU CLUB</span></footer>
+
+<script>
+"use strict";
+const SB_URL="https://hwgekflmucrfboahmtbf.supabase.co";
+const SB_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh3Z2VrZmxtdWNyZmJvYWhtdGJmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzcyNTE2OTgsImV4cCI6MjA5MjgyNzY5OH0.gmJqe_U15nazIiOUZXQmcY4x8n-rDhTRUyMvqDus9X8";
+const sb=supabase.createClient(SB_URL,SB_KEY,{auth:{persistSession:false}});
+let HOLES=[],PAR_TOTAL=72;
+
+function fmt(v){return v===0?'E':(v>0?'+'+v:''+v);}
+function cls(v){return v<0?'neg':(v>0?'pos2':'even');}
+function rcvHole(ph,si){
+  if(ph>=0)return Math.floor(ph/18)+(si<=ph%18?1:0);
+  const p=-ph;return -(Math.floor(p/18)+(si>(18-(p%18))?1:0));
+}
+function stats(scores,ph){
+  let thru=0,brut=0,net=0,birdies=0,eagles=0;
+  for(let i=0;i<18;i++){
+    const sc=scores[i];
+    if(sc==null)continue;
+    thru++;
+    const h=HOLES[i],rcv=rcvHole(ph||0,h.si);
+    const ns=sc==='X'?h.par+2+rcv:sc;
+    brut+=(sc==='X'?h.par+2:sc)-h.par;
+    net+=ns-rcv-h.par;
+    if(sc!=='X'&&sc-h.par===-1)birdies++;
+    if(sc!=='X'&&sc-h.par<=-2)eagles++;
+  }
+  return {thru,brut,net,birdies,eagles};
+}
+async function loadCourse(){
+  const r=await sb.from('golf_courses').select('holes,par').eq('id','st-clair').single();
+  if(!r.error){HOLES=r.data.holes;PAR_TOTAL=r.data.par;}
+}
+async function refresh(){
+  try{
+    const today=new Date().toISOString().slice(0,10);
+    const r=await sb.from('golf_rounds')
+      .select('birdie_pot,golf_round_players(display_name,hcp_index,coups_rendus,opt_pot,scores)')
+      .eq('round_date',today).eq('course_id','st-clair');
+    if(r.error)return;
+    const players=[];
+    r.data.forEach(rd=>(rd.golf_round_players||[]).forEach(p=>{
+      const st=stats(Array.isArray(p.scores)?p.scores:[],p.coups_rendus);
+      players.push({name:p.display_name,hcp:p.hcp_index,opt:p.opt_pot,...st});
+    }));
+    const rows=players.filter(p=>p.thru>0).sort((a,b)=>a.net-b.net||b.thru-a.thru);
+    const lb=document.getElementById('lb');
+    if(!rows.length){lb.innerHTML='<div class="empty">En attente des premiers départs… ⛳</div>';}
+    else{
+      let html='',pos=0,prev=null;
+      rows.slice(0,12).forEach((p,i)=>{
+        if(prev===null||p.net!==prev){pos=i+1;prev=p.net;}
+        html+=`<div class="row ${pos===1?'top1':''}">
+          <span class="pos num">${pos}</span>
+          <span class="nm">${p.name}<small>idx ${p.hcp}${p.birdies?' · '+p.birdies+' 🐦':''}</small></span>
+          <span class="thru">${p.thru===18?'F':'T'+p.thru}</span>
+          <span class="sc ${cls(p.brut)}">${fmt(p.brut)}</span>
+          <span class="sc ${cls(p.net)}">${fmt(p.net)}</span>
+        </div>`;
+      });
+      lb.innerHTML=html;
+    }
+    /* cagnotte */
+    const opted=players.filter(p=>p.opt);
+    const potEl=document.getElementById('pot');
+    if(opted.length){
+      const pot=5*opted.length;
+      const withShares=opted.map(p=>({...p,sh:p.birdies+3*p.eagles})).filter(p=>p.sh>0).sort((a,b)=>b.sh-a.sh);
+      const total=withShares.reduce((a,p)=>a+p.sh,0);
+      potEl.style.display='block';
+      document.getElementById('pot-a').textContent=pot+' €';
+      document.getElementById('pot-d').textContent=opted.length+' participants · birdie = 1 part, eagle = 3';
+      const bEl=document.getElementById('birdies');
+      if(withShares.length){
+        bEl.style.display='block';
+        document.getElementById('birdies-list').innerHTML=withShares.slice(0,6).map(p=>
+          `<div class="bl"><span>${p.name} ${'🐦'.repeat(Math.min(p.birdies,4))}${p.eagles?'🦅':''}</span><span class="eur num">${Math.round(pot/total*p.sh*100)/100} €</span></div>`
+        ).join('');
+      }else bEl.style.display='none';
+    }else potEl.style.display='none';
+  }catch(e){}
+}
+function clock(){
+  document.getElementById('clock').textContent=new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
+}
+(async()=>{
+  clock();setInterval(clock,10000);
+  await loadCourse();
+  refresh();setInterval(refresh,15000);
+})();
+</script>
+</body>
+</html>

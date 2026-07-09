@@ -262,6 +262,16 @@ td.sc-x{background:#000 !important;color:var(--coral) !important;}
 .badge .bi{font-size:26px;line-height:1.2;}
 .badge .bn{font-size:12px;font-weight:800;margin-top:4px;}
 .badge .bd{font-size:10px;color:var(--muted);margin-top:2px;line-height:1.25;}
+.stat-duo{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:8px 0 4px;}
+.stat-tile{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:14px;text-align:center;}
+.stat-tile .v{font-family:'Space Grotesk';font-size:30px;font-weight:700;}
+.stat-tile .k{font-size:11px;letter-spacing:1.5px;color:var(--muted);font-weight:900;margin-top:3px;}
+.stat-tile small{display:block;font-size:12px;color:var(--muted);margin-top:2px;}
+.stat-bars{display:flex;align-items:flex-end;gap:6px;height:90px;margin-top:12px;padding:0 2px;}
+.sbar{flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:4px;height:100%;}
+.sbar i{display:block;width:100%;background:var(--card2);border-radius:8px 8px 4px 4px;}
+.sbar.best i{background:var(--volt);}
+.sbar b{font-size:10px;color:var(--muted);font-weight:800;}
 
 .modal-bg{position:fixed;inset:0;background:rgba(5,8,12,.75);display:flex;align-items:center;justify-content:center;z-index:100;padding:16px;backdrop-filter:blur(4px);}
 .modal{background:var(--panel);border:1px solid var(--line);border-radius:26px;padding:26px 22px;width:100%;max-width:420px;max-height:88dvh;overflow-y:auto;}
@@ -1313,6 +1323,7 @@ async function finishRound(){
     potInfo={pot,totalShares,share:totalShares>0?pot/totalShares:0};
   }
 
+  window._share={units:r.units,formule:r.formule,dateStr:new Date().toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'})};
   let html='';
   const chouettePts=r.formule==='chouette'?chouettePoints(r.units):null;
   for(const [idx,u] of r.units.entries()){
@@ -1343,6 +1354,7 @@ async function finishRound(){
       <div class="resline"><span>Birdies / Eagles</span><b>${st.birdies} 🐦${st.eagles?' · '+st.eagles+' 🦅':''}</b></div>
       <div class="resline"><span>Points gagnés${teesSaved}</span><b style="color:var(--gold);">+${tees} 🏅</b></div>
       ${potInfo&&r.birdiePot?`<div class="resline"><span>Prime aux Birdies${kOpt?` (${uShares} part${uShares>1?'s':''})`:' (non inscrit)'}</span><b style="color:var(--volt);">${potWin>0?potWin+' €':'—'}</b></div>`:''}
+      <button class="btn btn-dark btn-sm" style="margin-top:12px;" onclick="shareCard(${idx})">📤 Partager ma carte</button>
     </div>`;
   }
   if(potInfo){
@@ -1352,11 +1364,90 @@ async function finishRound(){
   const best=Math.min(...r.units.map(u=>rankMap.get(u)||n));
   html=`<div class="hero-award"><div class="lbl">MEILLEUR CLASSEMENT DU GROUPE</div><div class="big">${best}ᵉ<span style="font-size:24px;color:var(--muted);"> / ${n}</span></div><div class="lbl" style="margin-top:6px;">PLATEAU DU JOUR : ${n} JOUEUR${n>1?'S':''}</div></div>`+html;
   $('summary-results').innerHTML=html;
+  window._share={units:r.units,formule:r.formule};
   S.round=null;
   store.set('round',null);
   show('summary');
 }
 function newRound(){show('formule');renderFormuleGrid();}
+
+/* ================= PARTAGE DE CARTE EN IMAGE ================= */
+const CARD_COLORS={eagle:'#ffc94d',birdie:'#ff5e57',par:'#222d40',bogey:'#4f9dff',double:'#2b5aa8',triple:'#6b7686',x:'#000000'};
+function cardColor(sc,par){
+  if(sc==='X')return CARD_COLORS.x;
+  const d=sc-par;
+  if(d<=-2)return CARD_COLORS.eagle;
+  if(d===-1)return CARD_COLORS.birdie;
+  if(d===0)return CARD_COLORS.par;
+  if(d===1)return CARD_COLORS.bogey;
+  if(d===2)return CARD_COLORS.double;
+  return CARD_COLORS.triple;
+}
+async function shareCard(idx){
+  const sh=window._share;
+  if(!sh||!sh.units[idx])return;
+  const u=sh.units[idx];
+  const st=unitStats(u);
+  const c=document.createElement('canvas');
+  c.width=1000;c.height=580;
+  const x=c.getContext('2d');
+  x.fillStyle='#0c1017';x.fillRect(0,0,1000,580);
+  /* entête */
+  x.fillStyle='#d4ff3f';x.font='900 22px Archivo, sans-serif';
+  x.fillText('GOLF DU DOMAINE DE ST CLAIR',40,52);
+  x.fillStyle='#f2f6fb';x.font='700 46px "Space Grotesk", sans-serif';
+  x.fillText(u.name,40,108);
+  x.fillStyle='#8b98ab';x.font='600 22px Archivo, sans-serif';
+  const FL={stroke:'Stroke Play',stab_brut:'Stableford brut',stab_net:'Stableford net',scramble:'Scramble',chouette:'La Chouette'};
+  x.fillText(new Date().toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'})+' · '+(FL[sh.formule]||'')+' · index '+u.hcp,40,142);
+  /* score global à droite */
+  x.textAlign='right';
+  x.fillStyle='#d4ff3f';x.font='700 72px "Space Grotesk", sans-serif';
+  x.fillText(''+(PAR_TOTAL+st.brut),960,100);
+  x.fillStyle='#8b98ab';x.font='700 24px Archivo, sans-serif';
+  x.fillText(fmtToPar(st.brut)+' brut · '+fmtToPar(st.net)+' net',960,140);
+  x.textAlign='left';
+  /* grille 2×9 */
+  const cw=96,ch=110,gx=40,gy=190,gap=8;
+  for(let i=0;i<18;i++){
+    const row=Math.floor(i/9),col=i%9;
+    const px=gx+col*(cw+gap),py=gy+row*(ch+gap+26);
+    const h=HOLES[i],sc=u.scores[i];
+    x.fillStyle='#5a6577';x.font='700 18px "Space Grotesk", sans-serif';
+    x.fillText((i+1)+'',px+6,py+22);
+    x.fillStyle='#39445a';x.font='600 16px Archivo, sans-serif';
+    x.textAlign='right';x.fillText('par '+h.par,px+cw-6,py+22);x.textAlign='left';
+    /* case score */
+    const d=sc==='X'?9:(sc-h.par);
+    x.fillStyle=sc==null?'#141b26':cardColor(sc,h.par);
+    const cy2=py+34,chh=ch-40;
+    if(sc!=='X'&&sc!=null&&(d===-1||d<=-2)){
+      x.beginPath();x.arc(px+cw/2,cy2+chh/2,chh/2,0,7);x.fill();
+    }else{
+      x.beginPath();x.roundRect(px,cy2,cw,chh,14);x.fill();
+    }
+    x.fillStyle=(sc!=null&&sc!=='X'&&sc-h.par<=-2)?'#1a1405':'#ffffff';
+    if(sc==='X')x.fillStyle='#ff5e57';
+    x.font='700 34px "Space Grotesk", sans-serif';x.textAlign='center';
+    x.fillText(sc==null?'–':(sc==='X'?'✕':sc),px+cw/2,cy2+chh/2+12);
+    x.textAlign='left';
+  }
+  /* pied */
+  x.fillStyle='#8b98ab';x.font='700 22px Archivo, sans-serif';
+  x.fillText((st.birdies?st.birdies+' birdie'+(st.birdies>1?'s':'')+' 🐦':'')+(st.eagles?'  ·  '+st.eagles+' eagle 🦅':''),40,552);
+  x.textAlign='right';x.fillStyle='#39445a';
+  x.fillText('golf.usathleticperformance.com',960,552);x.textAlign='left';
+  /* partage ou téléchargement */
+  c.toBlob(async(blob)=>{
+    const file=new File([blob],'carte-stclair.png',{type:'image/png'});
+    if(navigator.canShare&&navigator.canShare({files:[file]})){
+      try{await navigator.share({files:[file],title:'Ma carte à St Clair'});return;}catch(e){}
+    }
+    const a=document.createElement('a');
+    a.href=URL.createObjectURL(blob);a.download='carte-stclair.png';a.click();
+    toast('Carte enregistrée 📤');
+  },'image/png');
+}
 
 /* ================= COMPTE ================= */
 const PRIZES=[['Balle logotée St Clair',50],['Seau de practice',80],['Polo du club',300],['Green-fee invité',500],['1 coup rendu — Grande Compétition de fin d\'année',200]];
@@ -1476,6 +1567,38 @@ async function renderAccount(){
         <div style="overflow-x:auto;"><table class="sc"><tr>${cells}</tr></table></div>
         <div style="font-size:12px;color:var(--muted);margin-top:8px;">Ton meilleur score sur chaque trou, toutes parties confondues.</div>
       </div>`;
+    }
+    /* ---- stats perso ---- */
+    if(myRounds.length){
+      const per=Array(18).fill(null).map(()=>({n:0,sum:0}));
+      const evol=[];
+      myRounds.forEach(rp=>{
+        const scores=Array.isArray(rp.scores)?rp.scores:[];
+        const st=unitStats({ph:rp.coups_rendus||0,scores});
+        if(st.thru>=9)evol.push(st.net);
+        for(let i=0;i<18;i++){const sc=scores[i];if(typeof sc==='number'){per[i].n++;per[i].sum+=sc-HOLES[i].par;}}
+      });
+      const played=per.map((p,i)=>({i,n:p.n,avg:p.n?p.sum/p.n:0})).filter(p=>p.n>=2);
+      let sh='';
+      if(played.length>=2){
+        played.sort((a,b)=>b.avg-a.avg);
+        const bete=played[0],fet=played[played.length-1];
+        sh+=`<div class="stat-duo">
+          <div class="stat-tile"><div class="v neg">Trou ${bete.i+1}</div><div class="k">BÊTE NOIRE</div><small>${bete.avg>0?'+':''}${(Math.round(bete.avg*10)/10)} vs par en moyenne</small></div>
+          <div class="stat-tile"><div class="v" style="color:var(--volt);">Trou ${fet.i+1}</div><div class="k">FÉTICHE</div><small>${fet.avg>0?'+':''}${(Math.round(fet.avg*10)/10)} vs par en moyenne</small></div>
+        </div>`;
+      }
+      const last=evol.slice(0,10).reverse();
+      if(last.length>=2){
+        const mn=Math.min(...last),mx=Math.max(...last);
+        const best=Math.min(...last);
+        sh+=`<div style="font-size:12px;letter-spacing:1.5px;color:var(--muted);font-weight:900;margin-top:14px;">ÉVOLUTION DU NET · ${last.length} DERNIÈRES PARTIES</div>
+        <div class="stat-bars">`+last.map(n=>{
+          const pct=mx===mn?60:15+((mx-n)/(mx-mn))*75;
+          return `<div class="sbar ${n===best?'best':''}"><i style="height:${Math.round(pct)}%;"></i><b>${fmtToPar(n)}</b></div>`;
+        }).join('')+'</div>';
+      }
+      if(sh)html+=`<div class="rescard"><div style="font-weight:800;font-size:17px;">📊 Mes stats</div>${sh}</div>`;
     }
   }
   /* ---- amis ---- */
