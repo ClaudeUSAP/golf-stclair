@@ -1,5 +1,25 @@
 /* St Clair Live Scoring — service worker */
-const VERSION = 'stclair-v6';
+const VERSION = 'stclair-v7';
+
+/* ===== notifications push ===== */
+self.addEventListener('push', (e) => {
+  let d = {};
+  try { d = e.data.json(); } catch (err) {}
+  e.waitUntil(self.registration.showNotification(d.title || 'St Clair', {
+    body: d.body || '',
+    icon: 'icon-192.png',
+    badge: 'icon-192.png',
+    tag: d.tag || 'stclair-' + Date.now(),
+    data: { url: d.url || './' },
+  }));
+});
+self.addEventListener('notificationclick', (e) => {
+  e.notification.close();
+  e.waitUntil(clients.matchAll({ type: 'window', includeUncontrolled: true }).then((list) => {
+    for (const c of list) { if ('focus' in c) return c.focus(); }
+    return clients.openWindow(e.notification.data && e.notification.data.url || './');
+  }));
+});
 const SHELL = ['./', 'index.html', 'manifest.json', 'icon-192.png', 'icon-512.png'];
 
 self.addEventListener('install', (e) => {

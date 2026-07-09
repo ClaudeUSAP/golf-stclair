@@ -895,8 +895,8 @@ async function renderDefis(){
       html+='<div class="rescard"><div style="font-weight:800;font-size:17px;margin-bottom:6px;">📩 On te défie !</div>'+
         pendIn.map(c=>`<div class="resline"><span>⚔️ <b style="font-size:16px;">${(names[c.challenger]||{}).name||'?'}</b> <small style="color:var(--gold);">${c.stake} pts en jeu</small></span>
           <span style="display:flex;gap:6px;">
-            <button class="btn btn-volt btn-sm" style="width:auto;padding:8px 14px;" onclick="respondChallenge('${c.id}',true)">✓ Relever</button>
-            <button class="btn btn-red btn-sm" style="width:auto;padding:8px 14px;" onclick="respondChallenge('${c.id}',false)">✕</button>
+            <button class="btn btn-volt btn-sm" style="width:auto;padding:8px 14px;" onclick="respondChallenge('${c.id}',true,'${c.challenger}')">✓ Relever</button>
+            <button class="btn btn-red btn-sm" style="width:auto;padding:8px 14px;" onclick="respondChallenge('${c.id}',false,'${c.challenger}')">✕</button>
           </span></div>`).join('')+'</div>';
     }
     if(active.length){
@@ -955,18 +955,25 @@ async function addFriend(){
     const r=await sb.rpc('golf_friend_request',{p_me:S.user.id,p_pin:s.pin,p_name:name});
     if(r.error)throw r.error;
     toast(r.data.status==='accepted'?'Vous êtes amis avec '+r.data.friend+' ! 💚':'Demande envoyée à '+r.data.friend);
+    try{
+      const q=await sb.from('golf_members').select('id').eq('name',r.data.friend).single();
+      if(!q.error)pushNotify({member_id:q.data.id,
+        title:r.data.status==='accepted'?'💚 Nouvel ami':'👥 Demande d\'ami',
+        body:S.user.name+(r.data.status==='accepted'?' et toi êtes maintenant amis !':' veut te suivre sur St Clair Live')});
+    }catch(e){}
     await loadFriends();renderAccount();
   }catch(e){
     const msg={INCONNU:'Aucun membre à ce nom',DEJA_AMIS:'Vous êtes déjà amis',DEJA_DEMANDE:'Demande déjà envoyée',TOI_MEME:'C\'est toi !',PIN_FAUX:'Reconnecte-toi'}[(e.message||'').trim()]||'Erreur réseau';
     toast(msg,1);
   }
 }
-async function respondFriend(id,accept){
+async function respondFriend(id,accept,requesterId){
   const s=store.get('session');
   try{
     const r=await sb.rpc('golf_friend_respond',{p_me:S.user.id,p_pin:s.pin,p_request:id,p_accept:accept});
     if(r.error)throw r.error;
     toast(accept?'Ami accepté 💚':'Demande refusée');
+    if(accept&&requesterId)pushNotify({member_id:requesterId,title:'💚 Ami accepté',body:S.user.name+' a accepté ta demande — vous pouvez vous suivre en live'});
     await loadFriends();renderAccount();
   }catch(e){toast('Erreur',1);}
 }
@@ -1339,6 +1346,7 @@ function rowBump(i,d){
   if(sc==null||sc==='X')sc=h.par+d; else sc=Math.max(1,Math.min(14,sc+d));
   if(sc<1)sc=1;
   u.scores[r.hole]=sc;u._ts=Date.now();
+  notifyBirdieIfAny(u,r.hole);
   saveUnit(u);renderPlay();
 }
 function rowPar(i){const u=S.round.units[i];u.scores[S.round.hole]=HOLES[S.round.hole].par;u._ts=Date.now();saveUnit(u);renderPlay();}
@@ -1639,6 +1647,57 @@ async function finishRound(){
 }
 function newRound(){show('formule');renderFormuleGrid();}
 
+/* ================= NOTIFICATIONS PUSH ================= */
+const VAPID_PUB='BBLRu61vRCIHAsnOpdt6XzqCsuYaSSocZoYzdFj7GUYaoZx5S2oLGNYIeDgqh5OPHa1l42X10bJrhsahuyzlmoc';
+function b64ToU8(s){const p='='.repeat((4-s.length%4)%4);const b=atob((s+p).replace(/-/g,'+').replace(/_/g,'/'));return Uint8Array.from([...b].map(c=>c.charCodeAt(0)));}
+function pushNotify(payload){
+  if(!sb)return;
+  try{
+    fetch(SB_URL+'/functions/v1/notify',{method:'POST',
+      headers:{'Content-Type':'application/json','apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY},
+      body:JSON.stringify(payload)}).catch(()=>{});
+  }catch(e){}
+}
+async function enableNotifs(){
+  if(!S.user||S.user.guest){toast('Réservé aux membres',1);return;}
+  if(!('Notification' in window)||!('serviceWorker' in navigator)){toast('Non supporté sur ce navigateur',1);return;}
+  try{
+    const perm=await Notification.requestPermission();
+    if(perm!=='granted'){toast('Notifications refusées dans le navigateur',1);return;}
+    const reg=await navigator.serviceWorker.ready;
+    const sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:b64ToU8(VAPID_PUB)});
+    const j=sub.toJSON();
+    const r=await sb.from('golf_push_subs').upsert({endpoint:j.endpoint,member_id:S.user.id,sub:j},{onConflict:'endpoint'});
+    if(r.error)throw r.error;
+    store.set('notifs',1);
+    toast('Notifications activées 🔔');
+    renderAccount();
+  }catch(e){toast('Impossible — sur iPhone, installe d\'abord l\'app sur l\'écran d\'accueil',1);}
+}
+async function disableNotifs(){
+  try{
+    const reg=await navigator.serviceWorker.ready;
+    const sub=await reg.pushManager.getSubscription();
+    if(sub){try{await sb.from('golf_push_subs').delete().eq('endpoint',sub.endpoint);}catch(e){}await sub.unsubscribe();}
+  }catch(e){}
+  store.set('notifs',null);
+  toast('Notifications désactivées');
+  renderAccount();
+}
+function notifyBirdieIfAny(u,hole){
+  if(!u.memberId||!S.round||!S.round.online)return;
+  const sc=u.scores[hole];
+  if(typeof sc!=='number')return;
+  const d=sc-HOLES[hole].par;
+  if(d>-1)return;
+  u._nb=u._nb||{};
+  if(u._nb[hole])return;
+  u._nb[hole]=1;
+  pushNotify({friends_of:u.memberId,
+    title:d<=-2?'🦅 Eagle !':'🐦 Birdie !',
+    body:u.name+' vient de faire '+(d<=-2?'eagle':'birdie')+' au trou '+(hole+1)+' de St Clair'});
+}
+
 /* ================= INSTALLATION PWA ================= */
 let deferredPrompt=null;
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredPrompt=e;});
@@ -1863,18 +1922,21 @@ async function challengeFriend(fid){
   try{
     const r=await sb.rpc('golf_challenge_create',{p_me:S.user.id,p_pin:s.pin,p_friend:fid});
     if(r.error)throw r.error;
-    toast('Défi envoyé ⚔️ — meilleur net sur 7 jours');refreshChallengeViews();
+    toast('Défi envoyé ⚔️ — meilleur net sur 7 jours');
+    pushNotify({member_id:fid,title:'⚔️ Nouveau défi',body:S.user.name+' te défie — meilleur net sur 7 jours, '+(SETTINGS.bareme.defi??25)+' pts en jeu !'});
+    refreshChallengeViews();
   }catch(e){
     const msg={DEJA_EN_COURS:'Défi déjà en cours avec ce joueur',PAS_AMIS:'Vous devez être amis',PIN_FAUX:'Reconnecte-toi'}[(e.message||'').trim()]||'Erreur';
     toast(msg,1);
   }
 }
-async function respondChallenge(id,accept){
+async function respondChallenge(id,accept,otherId){
   const s=store.get('session');
   try{
     const r=await sb.rpc('golf_challenge_respond',{p_me:S.user.id,p_pin:s.pin,p_id:id,p_accept:accept});
     if(r.error)throw r.error;
     toast(accept?'Défi accepté ⚔️ — 7 jours pour signer ton meilleur net !':'Défi refusé');
+    if(accept&&otherId)pushNotify({member_id:otherId,title:'⚔️ Défi accepté',body:S.user.name+' a relevé ton défi — que le meilleur net gagne !'});
     refreshChallengeViews();
   }catch(e){toast('Erreur',1);}
 }
@@ -1972,6 +2034,10 @@ async function renderAccount(){
   <div style="font-size:16px;margin-top:12px;color:var(--gold);font-weight:900;">Solde boutique : ${acc.tees_balance??0} 🏅</div>
   <div style="font-size:14px;margin-top:8px;color:var(--muted);">Index ${acc.hcp_index} · ${t.label} ${t.dist} m · ${playingHcp(acc.hcp_index||0,acc.gender||'H',acc.tee_color||'jaune')} coups rendus à St Clair</div>
   ${S.user.guest?'<div style="font-size:13px;margin-top:8px;color:var(--muted);">Mode invité — crée un compte pour cumuler tes points.</div>':''}</div>`;
+  if(!S.user.guest){
+    const nOn=!!store.get('notifs');
+    html+=`<div class="switch ${nOn?'on':''}" onclick="${nOn?'disableNotifs()':'enableNotifs()'}"><span>🔔 Notifications — défis, amis, birdies</span><span class="chk">${nOn?'✓':''}</span></div>`;
+  }
   let hS='',hA='';
   /* ---- badges ---- */
   if(!S.user.guest){
@@ -2043,8 +2109,8 @@ async function renderAccount(){
       const m=frMembers[f.requester]||{name:'?'};
       fh+=`<div class="resline"><span>📩 <b style="font-size:16px;">${m.name}</b> veut te suivre</span>
         <span style="display:flex;gap:6px;">
-          <button class="btn btn-volt btn-sm" style="width:auto;padding:8px 14px;" onclick="respondFriend('${f.id}',true)">✓</button>
-          <button class="btn btn-red btn-sm" style="width:auto;padding:8px 14px;" onclick="respondFriend('${f.id}',false)">✕</button>
+          <button class="btn btn-volt btn-sm" style="width:auto;padding:8px 14px;" onclick="respondFriend('${f.id}',true,'${f.requester}')">✓</button>
+          <button class="btn btn-red btn-sm" style="width:auto;padding:8px 14px;" onclick="respondFriend('${f.id}',false,'${f.requester}')">✕</button>
         </span></div>`;
     });
     pendingOut.forEach(f=>{
