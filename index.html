@@ -403,6 +403,7 @@ td.sc-x{background:#000 !important;color:var(--coral) !important;}
 <div id="screen-start" class="screen">
   <div><span class="eyebrow">Étape 1</span><h2>On joue quoi ?</h2></div>
   <div id="club-banners" style="display:flex;flex-direction:column;gap:10px;"></div>
+  <div id="replay-slot" style="width:100%;"></div>
   <button class="btn btn-volt" onclick="show('formule')">⛳ Nouvelle partie</button>
   <div class="panel" style="gap:10px;">
     <div style="font-weight:800;font-size:17px;">👥 Rejoindre un groupe en cours</div>
@@ -695,6 +696,11 @@ function openAuth(mode,target){
   $('f-index').classList.toggle('hidden',lgn);
   $('f-tee').classList.toggle('hidden',lgn);
   $('a-name').value='';$('a-pin').value='';$('a-club').value='';$('a-index').value='';
+  if(mode==='register'&&S.user&&S.user.guest){ /* conversion invité : préremplir */
+    $('a-name').value=S.user.name||'';
+    $('a-index').value=S.user.hcp_index??'';
+    authG=S.user.gender||'H';authTee=S.user.tee_color||'jaune';
+  }
   const alt=$('auth-alt');
   if(mode==='login'){alt.textContent='Pas encore de compte ? Créer mon compte';alt.onclick=()=>openAuth('register');alt.style.display='flex';}
   else if(mode==='register'){alt.textContent='Déjà membre ? Me connecter';alt.onclick=()=>openAuth('login');alt.style.display='flex';}
@@ -753,6 +759,11 @@ async function doAuth(){
     }
     S.user={guest:false,...res.data};
     store.set('session',{guest:false,id:S.user.id,name:S.user.name,pin});
+    /* conversion invité : rattacher la carte qui vient d'être jouée */
+    if(authMode==='register'&&window._guestAttach&&window._guestAttach.ids.length){
+      try{await sb.from('golf_round_players').update({member_id:S.user.id}).in('id',window._guestAttach.ids);}catch(e){}
+      window._guestAttach=null;
+    }
     hide('auth-modal');
     toast((authMode==='register'?'Compte créé — bienvenue ':'Salut ')+S.user.name+' 🏅');
     afterLogin();
@@ -765,8 +776,21 @@ async function doAuth(){
 function afterLogin(){loadFriends();show('start');}
 
 /* ================= ÉTAPE 1 : HUB ================= */
+function replayLast(){
+  const ls=store.get('lastSetup');
+  if(!ls){show('formule');return;}
+  S.setup={formule:ls.formule,count:ls.count,birdiePot:ls.birdiePot,optIn:[],players:ls.players.map(p=>({...p}))};
+  if(ls.players[0]&&S.user)S.setup.players[0]={...ls.players[0],name:S.user.name,memberId:S.user.guest?null:S.user.id};
+  startRound();
+}
 async function renderStart(){
   renderFormuleGrid(); /* remplit aussi les bannières club */
+  const ls=store.get('lastSetup');
+  const rs=$('replay-slot');
+  if(rs)rs.innerHTML=ls?`<button class="btn btn-dark" style="flex-direction:column;gap:4px;" onclick="replayLast()">
+    <span>🔁 Rejouer comme la dernière fois</span>
+    <span style="font-size:13px;font-weight:600;color:var(--muted);">${(FLBL[ls.formule]||ls.formule)} · ${ls.players.map(p=>initials(p.name||'?')).join(' · ')}${ls.birdiePot?' · 🐦 5€':''}</span>
+  </button>`:'';
   const badge=$('defis-badge');
   badge.style.display='none';
   if(sb&&S.user&&!S.user.guest){
@@ -1146,6 +1170,8 @@ async function startRound(){
       opt:S.setup.birdiePot&&p.opt,ph:playingHcp(hcp,p.gender,p.tee),
       memberId:p.memberId||((i===0&&S.user&&!S.user.guest)?S.user.id:null)});
   }
+  store.set('lastSetup',{formule:S.setup.formule,count:S.setup.count,birdiePot:S.setup.birdiePot,
+    players:S.setup.players.slice(0,S.setup.count).map(p=>({name:p.name,gender:p.gender,hcp:p.hcp,tee:p.tee,opt:p.opt,memberId:p.memberId||null}))});
   let units=[];
   if(S.setup.formule==='scramble'){
     for(let t=0;t<players.length/2;t++){
@@ -1594,7 +1620,17 @@ async function finishRound(){
     <p class="sub" style="font-size:14px;">${potInfo.totalShares} part${potInfo.totalShares>1?'s':''} (birdie = 1, eagle = 3) → ${potInfo.totalShares>0?(Math.round(potInfo.share*100)/100)+' € la part':'aucun birdie : cagnotte reportée à demain !'}</p>`+html;
   }
   const best=Math.min(...r.units.map(u=>rankMap.get(u)||n));
-  html=`<div class="hero-award"><div class="lbl">MEILLEUR CLASSEMENT DU GROUPE</div><div class="big">${best}ᵉ<span style="font-size:24px;color:var(--muted);"> / ${n}</span></div><div class="lbl" style="margin-top:6px;">PLATEAU DU JOUR : ${n} JOUEUR${n>1?'S':''}</div></div>`+html;
+  let guestCta='';
+  if(S.user&&S.user.guest){
+    window._guestAttach={ids:r.units.filter(u=>u.dbId&&u.members.length===1).map(u=>u.dbId)};
+    guestCta=`<div class="rescard" style="border-color:rgba(212,255,63,.5);">
+      <div style="font-weight:800;font-size:17px;margin-bottom:6px;">🏅 Garde cette carte !</div>
+      <div class="sub" style="font-size:14px;margin-bottom:12px;">Crée ton compte membre (ton nom + un code PIN, 10 secondes) : cette carte rejoint ton historique et tu commences à cumuler des points pour la boutique et le classement du club.</div>
+      <button class="btn btn-volt" onclick="openAuth('register')">Créer mon compte</button>
+    </div>`;
+  }
+  html=`<div class="hero-award"><div class="lbl">MEILLEUR CLASSEMENT DU GROUPE</div><div class="big">${best}ᵉ<span style="font-size:24px;color:var(--muted);"> / ${n}</span></div><div class="lbl" style="margin-top:6px;">PLATEAU DU JOUR : ${n} JOUEUR${n>1?'S':''}</div></div>`+guestCta+html;
+  html+=installHint();
   $('summary-results').innerHTML=html;
   window._share={units:r.units,formule:r.formule};
   S.round=null;
@@ -1602,6 +1638,30 @@ async function finishRound(){
   show('summary');
 }
 function newRound(){show('formule');renderFormuleGrid();}
+
+/* ================= INSTALLATION PWA ================= */
+let deferredPrompt=null;
+window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredPrompt=e;});
+function installHint(){
+  try{
+    if(store.get('pwaHint'))return '';
+    if(window.matchMedia&&matchMedia('(display-mode: standalone)').matches)return '';
+    if(navigator.standalone)return '';
+  }catch(e){}
+  const isIOS=/iPhone|iPad|iPod/i.test(navigator.userAgent||'');
+  return `<div class="rescard" id="pwa-hint">
+    <div style="font-weight:800;font-size:17px;margin-bottom:6px;">📲 Installe l'app sur ton écran d'accueil</div>
+    <div class="sub" style="font-size:14px;margin-bottom:12px;">${isIOS?'Dans Safari : bouton Partager → « Sur l’écran d’accueil ». Icône St Clair, plein écran, et ça marche même sans réseau sur le parcours.':'Un tap et l’app vit sur ton écran d’accueil — plein écran, même sans réseau sur le parcours.'}</div>
+    ${!isIOS?'<button class="btn btn-volt btn-sm" onclick="doInstall()">Installer</button>':''}
+    <button class="btn btn-ghost btn-sm" style="margin-top:8px;" onclick="dismissInstall()">Plus tard</button>
+  </div>`;
+}
+function doInstall(){
+  store.set('pwaHint',1);
+  if(deferredPrompt){try{deferredPrompt.prompt();}catch(e){}deferredPrompt=null;}
+  const el=$('pwa-hint');if(el)el.remove();
+}
+function dismissInstall(){store.set('pwaHint',1);const el=$('pwa-hint');if(el)el.remove();}
 
 /* ================= PARTAGE DE CARTE EN IMAGE ================= */
 const CARD_COLORS={eagle:'#ffc94d',birdie:'#ff5e57',par:'#222d40',bogey:'#4f9dff',double:'#2b5aa8',triple:'#6b7686',x:'#000000'};
@@ -1901,29 +1961,6 @@ async function renderAccount(){
           if(!lv.error)liveFriends=lv.data;
         }
       }
-      /* ---- défis ---- */
-      const chr=await sb.from('golf_challenges').select('*')
-        .or(`challenger.eq.${S.user.id},challenged.eq.${S.user.id}`)
-        .order('created_at',{ascending:false}).limit(12);
-      if(!chr.error)challenges=chr.data.filter(c=>c.status!=='declined');
-      const missing=[...new Set(challenges.flatMap(c=>[c.challenger,c.challenged]))].filter(x=>x!==S.user.id&&!frMembers[x]);
-      if(missing.length){
-        const ms2=await sb.from('golf_members').select('id,name').in('id',missing);
-        if(!ms2.error)ms2.data.forEach(m=>frMembers[m.id]=m);
-      }
-      /* règlement auto des défis expirés */
-      for(const c of challenges.filter(c=>c.status==='active'&&c.end_date<todayISO())){
-        const [cs,ds]=await Promise.all([bestNetWindow(c.challenger,c.start_date,c.end_date),bestNetWindow(c.challenged,c.start_date,c.end_date)]);
-        try{
-          const r=await sb.rpc('golf_challenge_settle',{p_id:c.id,p_cs:cs,p_ds:ds});
-          if(!r.error){c.status='done';c.winner=r.data.winner;c.challenger_score=cs;c.challenged_score=ds;}
-        }catch(e){}
-      }
-      /* score courant des défis actifs */
-      for(const c of challenges.filter(c=>c.status==='active')){
-        c._cs=await bestNetWindow(c.challenger,c.start_date,todayISO());
-        c._ds=await bestNetWindow(c.challenged,c.start_date,todayISO());
-      }
     }catch(e){}
   }
   const t=COURSE.tees[acc.tee_color]||COURSE.tees.jaune;
@@ -1935,6 +1972,7 @@ async function renderAccount(){
   <div style="font-size:16px;margin-top:12px;color:var(--gold);font-weight:900;">Solde boutique : ${acc.tees_balance??0} 🏅</div>
   <div style="font-size:14px;margin-top:8px;color:var(--muted);">Index ${acc.hcp_index} · ${t.label} ${t.dist} m · ${playingHcp(acc.hcp_index||0,acc.gender||'H',acc.tee_color||'jaune')} coups rendus à St Clair</div>
   ${S.user.guest?'<div style="font-size:13px;margin-top:8px;color:var(--muted);">Mode invité — crée un compte pour cumuler tes points.</div>':''}</div>`;
+  let hS='',hA='';
   /* ---- badges ---- */
   if(!S.user.guest){
     const agg=aggBadges(myRounds);
@@ -1950,7 +1988,7 @@ async function renderAccount(){
         if(b!=null){covered++;toPar+=b-HOLES[i].par;}
         cells+=`<td class="${b!=null?scoreClass(b,HOLES[i].par):''}">${b??'·'}</td>`;
       });
-      html+=`<div class="rescard" style="padding:14px;">
+      hS+=`<div class="rescard" style="padding:14px;">
         <div style="display:flex;justify-content:space-between;font-weight:800;font-size:17px;margin-bottom:10px;">
           <span>🗺️ Ma carte éclectique</span><span class="num ${clsToPar(toPar)}">${fmtToPar(toPar)} <small style="color:var(--muted);">· ${covered}/18</small></span>
         </div>
@@ -1988,7 +2026,7 @@ async function renderAccount(){
           return `<div class="sbar ${n===best?'best':''}"><i style="height:${Math.round(pct)}%;"></i><b>${fmtToPar(n)}</b></div>`;
         }).join('')+'</div>';
       }
-      if(sh)html+=`<div class="rescard"><div style="font-weight:800;font-size:17px;">📊 Mes stats</div>${sh}</div>`;
+      if(sh)hS=`<div class="rescard"><div style="font-weight:800;font-size:17px;">📊 Mes stats</div>${sh}</div>`+hS;
     }
   }
   /* ---- amis ---- */
@@ -2032,38 +2070,13 @@ async function renderAccount(){
           <button style="color:var(--muted);font-size:15px;" onclick="removeFriend('${fid}')">✕</button>
         </span></div>`;
     });
-    /* ---- défis ---- */
-    if(challenges.length){
-      fh+='<div style="font-weight:900;font-size:12px;letter-spacing:2px;color:var(--gold);margin:12px 0 2px;">⚔️ DÉFIS · MEILLEUR NET SUR 7 JOURS</div>';
-      challenges.slice(0,6).forEach(c=>{
-        const meCh=c.challenger===S.user.id;
-        const other=frMembers[meCh?c.challenged:c.challenger]||{name:'?'};
-        if(c.status==='pending'&&!meCh){
-          fh+=`<div class="resline"><span>⚔️ <b style="font-size:16px;">${other.name}</b> te défie <small style="color:var(--gold);">${c.stake} pts en jeu</small></span>
-            <span style="display:flex;gap:6px;">
-              <button class="btn btn-volt btn-sm" style="width:auto;padding:8px 14px;" onclick="respondChallenge('${c.id}',true)">✓</button>
-              <button class="btn btn-red btn-sm" style="width:auto;padding:8px 14px;" onclick="respondChallenge('${c.id}',false)">✕</button>
-            </span></div>`;
-        }else if(c.status==='pending'){
-          fh+=`<div class="resline"><span>⚔️ ${other.name}</span><b style="color:var(--muted);font-size:13px;">en attente…</b></div>`;
-        }else if(c.status==='active'){
-          const mine=meCh?c._cs:c._ds, theirs=meCh?c._ds:c._cs;
-          const fin=new Date(c.end_date+'T12:00:00').toLocaleDateString('fr-FR',{day:'numeric',month:'short'});
-          fh+=`<div class="resline"><span>⚔️ vs <b style="font-size:16px;">${other.name}</b><small style="display:block;color:var(--muted);">jusqu'au ${fin} · ${c.stake} pts · carte complète en net</small></span>
-            <b class="num">${mine==null?'—':fmtToPar(mine)} <small style="color:var(--muted);font-weight:600;">/ ${theirs==null?'—':fmtToPar(theirs)}</small></b></div>`;
-        }else{
-          const won=c.winner===S.user.id;
-          fh+=`<div class="resline"><span>${won?'✅ Gagné':(c.winner?'❌ Perdu':'🤝 Égalité')} vs ${other.name}</span><b style="color:${won?'var(--volt)':'var(--muted)'};">${won?'+'+c.stake+' 🏅':''}</b></div>`;
-        }
-      });
-    }
     if(!accepted.length&&!pendingIn.length&&!pendingOut.length)fh+='<div class="pd-empty">Ajoute des membres par leur nom pour suivre leurs scores en live.</div>';
     fh+='</div>';
-    html+=fh;
+    hA+=fh+`<button class="btn btn-dark" onclick="show('defis')">⚔️ Mes défis</button>`;
   }
   /* ---- historique de parties ---- */
   if(myRounds.length){
-    html+='<div class="rescard"><div style="font-weight:800;font-size:17px;margin-bottom:6px;">⛳ Mes parties</div>'+
+    hS+='<div class="rescard"><div style="font-weight:800;font-size:17px;margin-bottom:6px;">⛳ Mes parties</div>'+
       myRounds.slice(0,12).map(rp=>{
         const st=unitStats({ph:rp.coups_rendus,scores:Array.isArray(rp.scores)?rp.scores:[]});
         const rd=rp.golf_rounds||{};
@@ -2072,7 +2085,7 @@ async function renderAccount(){
           <b class="num">${st.thru?PAR_TOTAL+st.brut:'—'} <small style="color:var(--muted);font-weight:600;">${fmtToPar(st.brut)} / ${fmtToPar(st.net)} net</small></b></div>`;
       }).join('')+'</div>';
   }else if(!S.user.guest){
-    html+='<div class="rescard"><div style="font-weight:800;font-size:17px;margin-bottom:6px;">⛳ Mes parties</div><div class="pd-empty">Tes parties apparaîtront ici automatiquement.</div></div>';
+    hS+='<div class="rescard"><div style="font-weight:800;font-size:17px;margin-bottom:6px;">⛳ Mes parties</div><div class="pd-empty">Tes parties apparaîtront ici automatiquement.</div></div>';
   }
   html+='<div class="rescard"><div style="font-weight:800;font-size:17px;margin-bottom:6px;">🎁 Boutique des Points</div>'+
     (SETTINGS.prizes||[]).map(p=>`<div class="resline"><span>${p[0]}</span><b style="color:var(--gold);">${p[1]} 🏅</b></div>`).join('')+'</div>';
@@ -2080,7 +2093,21 @@ async function renderAccount(){
     html+='<div class="rescard"><div style="font-weight:800;font-size:17px;margin-bottom:6px;">📜 Points gagnés</div>'+
       history.map(h=>`<div class="resline"><span>${new Date(h.created_at).toLocaleDateString('fr-FR')} · ${h.reason||''}</span><b style="color:var(--gold);">${h.delta>0?'+':''}${h.delta} 🏅</b></div>`).join('')+'</div>';
   }
-  $('account-body').innerHTML=html;
+  if(S.user.guest){$('account-body').innerHTML=html;return;}
+  window._acc={
+    profil:html,
+    stats:hS||'<div class="rescard"><div class="pd-empty">Joue ta première partie pour voir tes stats.</div></div>',
+    amis:hA
+  };
+  renderAccTabs();
+}
+let accTab='profil';
+function renderAccTabs(){
+  $('account-body').innerHTML=`<div class="tabs">
+    <button class="tab ${accTab==='profil'?'on':''}" onclick="accTab='profil';renderAccTabs()">Profil</button>
+    <button class="tab ${accTab==='stats'?'on':''}" onclick="accTab='stats';renderAccTabs()">Stats</button>
+    <button class="tab ${accTab==='amis'?'on':''}" onclick="accTab='amis';renderAccTabs()">Amis</button>
+  </div>`+(window._acc?window._acc[accTab]:'');
 }
 
 /* ================= INIT ================= */
