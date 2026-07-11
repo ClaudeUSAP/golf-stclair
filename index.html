@@ -346,8 +346,8 @@ td.sc-x{background:#000 !important;color:var(--coral) !important;}
   <h1 data-i18n="h1">Ta carte de score,<br>en direct.</h1>
   <p class="sub" data-i18n="hsub">Scores du groupe, classement live du club,<br>points à gagner et Prime aux Birdies. 🏅</p>
   <div style="width:100%;display:flex;flex-direction:column;gap:12px;margin-top:6px;">
-    <button class="btn btn-volt" onclick="openAuth('login')" data-i18n="member">🔑 Membre</button>
-    <button class="btn btn-dark" onclick="guestStart()" data-i18n="guest">⛳ Invité — jouer directement</button>
+    <button class="btn btn-volt" onclick="guestStart()" data-i18n="guest">Jouer — sans compte</button>
+    <button class="btn btn-dark" onclick="openAuth('login')" data-i18n="member">J'ai un compte (nom + PIN)</button>
     <button class="btn btn-ghost btn-sm" onclick="show('help')" data-i18n="how">Comment ça marche ?</button>
   </div>
 </div>
@@ -376,7 +376,7 @@ td.sc-x{background:#000 !important;color:var(--coral) !important;}
     <div class="modal-btns">
       <button class="btn btn-volt" id="auth-go" onclick="doAuth()" data-i18n="validate">Valider</button>
       <button class="btn btn-ghost" onclick="hide('auth-modal')" data-i18n="cancel">Annuler</button>
-      <button class="btn btn-ghost btn-sm" id="auth-alt" onclick=""></button>
+      <button class="btn btn-dark btn-sm" id="auth-alt" onclick=""></button>
     </div>
   </div>
 </div>
@@ -416,7 +416,7 @@ td.sc-x{background:#000 !important;color:var(--coral) !important;}
 
 <!-- ================= ÉTAPE 1 : HUB ================= -->
 <div id="screen-start" class="screen">
-  <div><span class="eyebrow" data-i18n="step1">Étape 1</span><h2 data-i18n="whatplay">On joue quoi ?</h2></div>
+  <div><h2 data-i18n="whatplay">On joue quoi ?</h2></div>
   <div id="club-banners" style="display:flex;flex-direction:column;gap:10px;"></div>
   <div id="replay-slot" style="width:100%;"></div>
   <button class="btn btn-volt" onclick="show('formule')" data-i18n="newround">Nouvelle partie</button>
@@ -441,14 +441,14 @@ td.sc-x{background:#000 !important;color:var(--coral) !important;}
 
 <!-- ================= FORMULE ================= -->
 <div id="screen-formule" class="screen">
-  <div><span class="eyebrow" data-i18n="step2">Étape 2/3</span><h2 data-i18n="format">La formule du jour</h2></div>
+  <div><h2 data-i18n="format">La formule du jour</h2></div>
   <div class="choice-grid" id="formule-grid"></div>
   <button class="btn btn-volt" onclick="gotoPlayers()">Continuer →</button>
 </div>
 
 <!-- ================= JOUEURS ================= -->
 <div id="screen-players" class="screen">
-  <div><span class="eyebrow" data-i18n="step3">Étape 3/3</span><h2 data-i18n="group">Le groupe</h2></div>
+  <div><h2 data-i18n="group">Le groupe</h2></div>
   <p class="sub" id="players-sub">Combien êtes-vous ?</p>
   <div class="choice-grid" id="count-grid" style="grid-template-columns:repeat(4,1fr);"></div>
   <div id="players-list" style="display:flex;flex-direction:column;gap:12px;"></div>
@@ -657,8 +657,8 @@ const I18N={
  badge:['SCORING LIVE · PARCOURS 18 TROUS','LIVE SCORING · 18-HOLE COURSE'],
  h1:['Ta carte de score,<br>en direct.','Your scorecard,<br>live.'],
  hsub:['Scores du groupe, classement live du club,<br>points à gagner et Prime aux Birdies. 🏅','Group scoring, live club leaderboard,<br>points to earn and the Birdie Pot. 🏅'],
- member:['🔑 Membre','🔑 Member'],
- guest:['⛳ Invité — jouer directement','⛳ Guest — play right away'],
+ member:["J'ai un compte (nom + PIN)",'I have an account (name + PIN)'],
+ guest:['Jouer — sans compte','Play — no account'],
  how:['Comment ça marche ?','How does it work?'],
  step1:['Étape 1','Step 1'],whatplay:['On joue quoi ?','What are we playing?'],
  newround:['Nouvelle partie','New round'],
@@ -1169,7 +1169,7 @@ function pset(i,k,v){S.setup.players[i][k]=v;if(k!=='name'&&k!=='hcp')renderPlay
 function syncCR(i){
   const p=S.setup.players[i];
   const el=$('cr'+i);
-  if(el)el.textContent=playingHcp(parseFloat(p.hcp)||0,p.gender,p.tee)+' cps';
+  if(el)el.textContent=(((COURSE.tees[p.tee]||{}).label||p.tee))+' · '+playingHcp(parseFloat(p.hcp)||0,p.gender,p.tee)+' cps';
 }
 function renderPlayersList(){
   let html='';
@@ -1191,7 +1191,7 @@ function renderPlayersList(){
         <div class="tee-row" style="flex:1;">
           ${Object.keys(COURSE.tees).map(c=>`<button class="tee-dot ${p.tee===c?'on':''}" style="background:${TEE_COLORS[c]};width:32px;height:32px;" onclick="pset(${i},'tee','${c}')"></button>`).join('')}
         </div>
-        <span class="cr-badge" id="cr${i}">${playingHcp(parseFloat(p.hcp)||0,p.gender,p.tee)} cps</span>
+        <span class="cr-badge" id="cr${i}">${((COURSE.tees[p.tee]||{}).label||p.tee)} · ${playingHcp(parseFloat(p.hcp)||0,p.gender,p.tee)} cps</span>
       </div>
       <div class="sugg" id="sugg${i}"></div>
     </div>`;
@@ -1451,7 +1451,7 @@ function renderPlay(){
         <span class="er-result ${cls}">${lab}</span>
       </div>
       <div class="er-controls">
-        <button class="ctl xbtn" onclick="rowX(${i})">✕</button>
+        <button class="ctl xbtn" title="${t('Balle ramassée','Ball picked up')}" onclick="rowX(${i})">✕</button>
         <button class="ctl minus" onclick="rowBump(${i},-1)">−</button>
         <div class="er-score num ${sc!=null?'set':''}">${sc==null?'–':(sc==='X'?'✕':sc)}</div>
         <button class="ctl plus" onclick="rowBump(${i},1)">+</button>
