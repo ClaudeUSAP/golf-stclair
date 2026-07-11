@@ -330,6 +330,10 @@ body.light .btn-next{opacity:.55;}
 body.light .btn-next.ready{opacity:1;}
 body.light .tee-dot{box-shadow:inset 0 0 0 1.5px rgba(0,0,0,.18);}
 body.light .pill-btn{border-color:#b8860b;color:#8a6410;}
+body.light .brand .bt small{color:#54710e;}
+body.light table.sc td.cur{box-shadow:inset 0 0 0 2px #7fa314;}
+body.light table.sc tr.hrow td.cur{color:#54710e;}
+body.light .hero-award .big{color:#54710e;}
 
 /* ===== signature de marque : la rangée de 18 trous ===== */
 .brand-strip{display:flex;gap:5px;width:100%;max-width:480px;margin:14px 0 4px;}
@@ -376,6 +380,7 @@ h1.mega .hl{background:var(--volt);color:#1c2405;padding:0 12px;border-radius:14
       <button class="btn btn-ghost" id="theme-menu-btn" onclick="toggleTheme()">🌙 Passer en thème sombre</button>
       <button class="btn btn-ghost" onclick="toggleMenu();show('help')" data-i18n="help">? Aide</button>
       <button class="btn btn-ghost" onclick="toggleMenu();openAdmin()" data-i18n="clubspace">🔧 Espace club</button>
+      <button class="btn btn-ghost" onclick="toggleMenu();show('home')">🔄 <span data-i18n="switchp">Changer de joueur</span></button>
       <button class="btn btn-red" id="menu-logout" onclick="toggleMenu();logout()" data-i18n="logout">Se déconnecter</button>
       <button class="btn btn-red" onclick="toggleMenu();confirmQuit()" data-i18n="quit">✕ Quitter la partie</button>
     </div>
@@ -480,6 +485,8 @@ h1.mega .hl{background:var(--volt);color:#1c2405;padding:0 12px;border-radius:14
     </div>
   </div>
   <div id="defi-hub" style="width:100%;"></div>
+  <div id="feed-slot" style="width:100%;"></div>
+  <button class="btn btn-ghost btn-sm" onclick="show('home')">🔄 <span data-i18n="switchp">Changer de joueur</span></button>
 </div>
 
 <!-- ================= DÉFIS ================= -->
@@ -493,6 +500,7 @@ h1.mega .hl{background:var(--volt);color:#1c2405;padding:0 12px;border-radius:14
 <!-- ================= FORMULE ================= -->
 <div id="screen-formule" class="screen">
   <div><h2 data-i18n="format">La formule du jour</h2></div>
+  <div id="course-select" class="group-live" style="margin:0;"></div>
   <div class="choice-grid" id="formule-grid"></div>
   <button class="btn btn-volt" onclick="gotoPlayers()">Continuer →</button>
 </div>
@@ -739,7 +747,8 @@ const I18N={
  potbanner:['🐦 Cagnotte Birdies','🐦 Birdie Pot'],
  potstake:['Mise par joueur','Stake per player'],
  defisub:['Choisis ton format et ta mise — l\'adversaire a 7 jours pour répondre, puis 7 jours de jeu. Le gagnant prend la mise.','Pick your format and stake — your opponent has 7 days to respond, then 7 days to play. Winner takes the stake.'],
- dtitle:['Défi','Challenge'],dstake:['MISE (POINTS)','STAKE (POINTS)'],dsend:['Envoyer le défi','Send challenge'],dbtn:['⚔️ Défi','⚔️ Duel']
+ dtitle:['Défi','Challenge'],dstake:['MISE (POINTS)','STAKE (POINTS)'],dsend:['Envoyer le défi','Send challenge'],dbtn:['⚔️ Défi','⚔️ Duel'],
+ switchp:['Changer de joueur','Switch player']
 };
 function applyLang(){
   document.documentElement.lang=LANG;
@@ -950,13 +959,30 @@ async function createLeague(){
   const r=await rpcCall('golf_league_create',{p_me:S.user.id,p_pin:s.pin,p_name:name});
   if(r.error){toast(r.error.message==='NOM_DEJA_PRIS'?t('Ce nom de ligue existe déjà','League name already taken'):t('Erreur','Error'),1);return;}
   toast(t('Ligue créée : ','League created: ')+r.data.name);
+  postFeed(S.user.id,'league',{name:S.user.name,action:'create',league:r.data.name},S.user.feed_visibility||'club');
   delete leagueMembersCache[r.data.id];
   await loadMyLeagues();renderAccount();
 }
 async function joinLeague(id){
   const s=store.get('session');
   const r=await rpcCall('golf_league_join',{p_me:S.user.id,p_pin:s.pin,p_league:id});
-  if(!r.error){toast(t('Ligue rejointe','League joined'));delete leagueMembersCache[id];await loadMyLeagues();renderAccount();}
+  if(!r.error){
+    toast(t('Ligue rejointe','League joined'));
+    delete leagueMembersCache[id];await loadMyLeagues();
+    const l=LEAGUES.find(x=>x.id===id);
+    postFeed(S.user.id,'league',{name:S.user.name,action:'join',league:l?l.name:''},S.user.feed_visibility||'club');
+    renderAccount();
+  }
+}
+async function cycleFeedVis(){
+  const order=['club','friends','private'];
+  const nxt=order[(order.indexOf(S.user.feed_visibility||'club')+1)%3];
+  const s=store.get('session');
+  const r=await rpcCall('golf_set_feed_visibility',{p_me:S.user.id,p_pin:s.pin,p_vis:nxt});
+  if(r.error){toast(t('Erreur','Error'),1);return;}
+  S.user.feed_visibility=nxt;
+  toast({club:t('📣 Actus visibles par tout le club','📣 Feed visible to the whole club'),friends:t('💚 Actus visibles par tes amis seulement','💚 Feed visible to friends only'),private:t('🔒 Actus privées — rien n\'est partagé','🔒 Feed private — nothing shared')}[nxt]);
+  renderAccount();
 }
 async function leaveLeague(id){
   if(!confirm(t('Quitter cette ligue ?','Leave this league?')))return;
@@ -966,9 +992,10 @@ async function leaveLeague(id){
 }
 
 /* ================= ÉTAPE 1 : HUB ================= */
-function replayLast(){
+async function replayLast(){
   const ls=store.get('lastSetup');
   if(!ls){show('formule');return;}
+  await setCourse(ls.courseId||'st-clair');
   S.setup={formule:normFormule(ls.formule)||'stroke',count:ls.count,birdiePot:ls.birdiePot,potAmount:ls.potAmount||5,optIn:[],players:ls.players.map(p=>({...p}))};
   if(ls.players[0]&&S.user)S.setup.players[0]={...ls.players[0],name:S.user.name,memberId:S.user.guest?null:S.user.id};
   startRound();
@@ -991,6 +1018,40 @@ async function renderStart(){
       }
     }catch(e){}
   }
+  renderFeed();
+}
+
+/* ================= FIL D'ACTUS DU CLUB ================= */
+function feedLabel(f){
+  const p=f.payload||{};
+  if(f.kind==='round')return `⛳ <b>${p.name||'?'}</b> — ${p.score||''}${p.birdies?' · '+p.birdies+' 🐦':''}<small style="display:block;color:var(--muted);">${p.course||''}${p.formule?' · '+(FLBL[p.formule]||p.formule):''}</small>`;
+  if(f.kind==='trophy')return `🏆 <b>${p.name||'?'}</b> ${t('débloque','unlocks')} ${p.label||''}`;
+  if(f.kind==='league')return `👥 <b>${p.name||'?'}</b> ${p.action==='create'?t('a créé la ligue','created league'):t('a rejoint la ligue','joined league')} <b>${p.league||''}</b>`;
+  if(f.kind==='defi')return `⚔️ <b>${p.name||'?'}</b> ${p.text||''}`;
+  return '';
+}
+async function renderFeed(){
+  const slot=$('feed-slot');
+  if(!slot||!sb)return;
+  try{
+    const r=await sb.from('golf_feed').select('member_id,kind,payload,visibility,created_at').order('created_at',{ascending:false}).limit(30);
+    if(r.error)return;
+    const rows=r.data.filter(f=>{
+      if(S.user&&!S.user.guest&&f.member_id===S.user.id)return true;
+      if(f.visibility==='club')return true;
+      if(f.visibility==='friends')return S.user&&!S.user.guest&&FRIENDS.has(f.member_id);
+      return false;
+    }).slice(0,8);
+    if(!rows.length){slot.innerHTML='';return;}
+    slot.innerHTML=`<div class="rescard" style="text-align:left;">
+      <div style="font-weight:800;font-size:16px;margin-bottom:4px;">📣 ${t('Au club','At the club')}</div>
+      ${rows.map(f=>{
+        const d=new Date(f.created_at);
+        const when=d.toDateString()===new Date().toDateString()?d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}):d.toLocaleDateString('fr-FR',{day:'numeric',month:'short'});
+        return `<div class="resline" style="align-items:flex-start;"><span style="font-size:14px;">${feedLabel(f)}</span><small class="num" style="color:var(--muted);white-space:nowrap;">${when}</small></div>`;
+      }).join('')}
+    </div>`;
+  }catch(e){}
 }
 
 /* ================= REJOINDRE UN GROUPE (multi-appareils) ================= */
@@ -1000,19 +1061,20 @@ async function joinGroup(){
   if(!sb){toast('Pas de connexion',1);return;}
   try{
     const r=await sb.from('golf_rounds')
-      .select('id,formule,birdie_pot,join_code,golf_round_players(*)')
+      .select('id,formule,birdie_pot,join_code,course_id,golf_round_players(*)')
       .eq('round_date',todayISO()).eq('status','live').eq('join_code',code)
       .order('created_at',{ascending:false}).limit(1);
     if(r.error)throw r.error;
-    if(!r.data.length){toast('Aucun groupe en jeu avec ce code',1);return;}
+    if(!r.data.length){toast(t('Aucun groupe en jeu avec ce code','No live group with this code'),1);return;}
     const rd=r.data[0];
+    await setCourse(rd.course_id||'st-clair');
     const units=(rd.golf_round_players||[]).map(p=>({
       name:p.display_name,ini:p.ini,hcp:p.hcp_index,gender:p.gender,tee:p.tee_color,ph:p.coups_rendus,
       scores:(Array.isArray(p.scores)?p.scores:[]).concat(Array(18).fill(null)).slice(0,18),
       members:[{name:p.display_name,opt:p.opt_pot,memberId:p.member_id}],me:true,memberId:p.member_id,dbId:p.id
     }));
     if(!units.length){toast('Groupe vide',1);return;}
-    S.round={formule:rd.formule,units,hole:0,birdiePot:rd.birdie_pot,dbId:rd.id,online:true,date:todayISO(),code:rd.join_code,joined:true};
+    S.round={formule:rd.formule,units,hole:0,birdiePot:rd.birdie_pot,dbId:rd.id,online:true,date:todayISO(),code:rd.join_code,joined:true,courseId:COURSE.id};
     persistRound();
     startRoundSync();
     show('play');
@@ -1205,6 +1267,11 @@ function renderFormuleGrid(){
   if(SETTINGS.pro_card&&SETTINGS.pro_card.active)
     bh+=`<div class="pot-banner" style="border-color:rgba(255,94,87,.5);color:var(--coral);background:linear-gradient(120deg,#2a1210,#1a1010);"><span>🎯 BEAT THE PRO</span><span style="font-size:13px;font-weight:700;">bats la carte de ${SETTINGS.pro_card.name||'notre pro'} — visible au leaderboard</span></div>`;
   const cb=$('club-banners');if(cb)cb.innerHTML=bh;
+  /* sélecteur de parcours (pré-enregistrés) */
+  const cs=$('course-select');
+  if(cs)cs.innerHTML=COURSES.length>1?COURSES.map(c=>
+    `<div class="gl-chip ${COURSE.id===c.id?'first':''}" style="cursor:pointer;" onclick="setCourse('${c.id}')">${c.id==='st-clair'?'⛳ ':'✈️ '}${courseShort(c.id)} <span class="num" style="color:var(--muted);">${c.par}</span></div>`
+  ).join(''):'';
 }
 function pickFormule(id){S.setup.formule=id;renderFormuleGrid();}
 function defaultPlayer(i){
@@ -1383,7 +1450,7 @@ async function startRound(){
       memberId:p.memberId||((i===0&&S.user&&!S.user.guest)?S.user.id:null)});
   }
   const potAmount=Math.max(1,Math.min(100,parseInt(S.setup.potAmount)||5));
-  store.set('lastSetup',{formule:S.setup.formule,count:S.setup.count,birdiePot:S.setup.birdiePot,potAmount,
+  store.set('lastSetup',{formule:S.setup.formule,count:S.setup.count,birdiePot:S.setup.birdiePot,potAmount,courseId:COURSE.id,
     players:S.setup.players.slice(0,S.setup.count).map(p=>({name:p.name,gender:p.gender,hcp:p.hcp,tee:p.tee,opt:p.opt,memberId:p.memberId||null}))});
   let units=[];
   if(S.setup.formule==='scramble'){
@@ -1399,7 +1466,7 @@ async function startRound(){
       scores:Array(18).fill(null),members:[p],me:true,memberId:p.memberId}));
   }
   const joinCode=String(Math.floor(1000+Math.random()*9000));
-  S.round={formule:S.setup.formule,units,hole:0,birdiePot:S.setup.birdiePot,potAmount,dbId:null,online:false,date:todayISO(),code:joinCode};
+  S.round={formule:S.setup.formule,units,hole:0,birdiePot:S.setup.birdiePot,potAmount,dbId:null,online:false,date:todayISO(),code:joinCode,courseId:COURSE.id};
   persistRound();
   show('play');
   loadMyDefis();
@@ -1693,8 +1760,8 @@ async function loadRinger(){
   try{
     const yr=new Date().getFullYear();
     const r=await sb.from('golf_round_players')
-      .select('member_id,display_name,scores,golf_rounds!inner(round_date)')
-      .not('member_id','is',null).gte('golf_rounds.round_date',yr+'-01-01').limit(1000);
+      .select('member_id,display_name,scores,golf_rounds!inner(round_date,course_id)')
+      .not('member_id','is',null).gte('golf_rounds.round_date',yr+'-01-01').eq('golf_rounds.course_id','st-clair').limit(1000);
     if(r.error)return;
     const map={};
     r.data.forEach(p=>{
@@ -1803,6 +1870,41 @@ function renderLb(){
   }else{$('pot-banner').classList.add('hidden');$('pot-detail').classList.add('hidden');}
 }
 
+/* ================= TROPHÉES & FIL D'ACTUS ================= */
+const TROPHIES=[
+ {code:'win_day',  label:'🥇 Vainqueur du jour',        test:(u,st,rk,n,r)=>rk===1&&n>=4},
+ {code:'eagle',    label:'🦅 Premier eagle',            test:(u,st)=>st.eagles>0},
+ {code:'birdie3',  label:'🐦 3 birdies dans une partie',test:(u,st)=>st.birdies>=3},
+ {code:'sub90',    label:'🎯 Sous les 90',              test:(u,st)=>st.thru===18&&!u.scores.includes('X')&&(PAR_TOTAL+st.brut)<90},
+ {code:'sub80',    label:'🏌️ Sous les 80',             test:(u,st)=>st.thru===18&&!u.scores.includes('X')&&(PAR_TOTAL+st.brut)<80},
+ {code:'away',     label:'✈️ Globe-trotteur',           test:(u,st,rk,n,r)=>(r.courseId||'st-clair')!=='st-clair'}
+];
+function postFeed(memberId,kind,payload,visibility){
+  if(!sb||!memberId)return;
+  if(visibility==='private')return;
+  try{sb.from('golf_feed').insert({member_id:memberId,kind,payload,visibility:visibility||'club'}).then(()=>{});}catch(e){}
+}
+async function awardTrophiesFor(u,st,rk,n,r,visMap){
+  const won=[];
+  if(!sb)return won;
+  for(const m of u.members){
+    if(!m.memberId)continue;
+    for(const tr of TROPHIES){
+      let ok=false;
+      try{ok=tr.test(u,st,rk,n,r);}catch(e){}
+      if(!ok)continue;
+      try{
+        const res=await sb.from('golf_member_trophies').insert({member_id:m.memberId,code:tr.code,label:tr.label,meta:{course:r.courseId||'st-clair'}});
+        if(!res.error){
+          won.push(tr);
+          postFeed(m.memberId,'trophy',{name:(visMap[m.memberId]||{}).name||u.name,label:tr.label},(visMap[m.memberId]||{}).vis||'club');
+        }
+      }catch(e){}
+    }
+  }
+  return won;
+}
+
 /* ================= FIN / TEES / CAGNOTTE ================= */
 function teesForRank(rank,n){
   const b=SETTINGS.bareme||{};
@@ -1852,6 +1954,19 @@ async function finishRound(){
   }
 
   window._share={units:r.units,formule:r.formule,dateStr:new Date().toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'})};
+
+  /* visibilité du fil d'actus des membres du groupe */
+  const visMap={};
+  if(sb){
+    const allIds=r.units.flatMap(u=>u.members.map(m=>m.memberId)).filter(Boolean);
+    if(allIds.length){
+      try{
+        const vr=await sb.from('golf_members').select('id,name,feed_visibility').in('id',allIds);
+        if(!vr.error)vr.data.forEach(m=>visMap[m.id]={name:m.name,vis:m.feed_visibility||'club'});
+      }catch(e){}
+    }
+  }
+
   let html='';
   const chouettePts=r.formule==='chouette'?chouettePoints(r.units):null;
   for(const [idx,u] of r.units.entries()){
@@ -1879,12 +1994,24 @@ async function finishRound(){
         }catch(e){}
       }
     }
+    /* trophées + fil d'actus */
+    let trophyLine='';
+    if(sb){
+      const won=await awardTrophiesFor(u,st,rk,n,r,visMap);
+      if(won.length)trophyLine=`<div class="resline"><span>${t('Trophées débloqués','Trophies unlocked')}</span><b style="color:var(--gold);">${won.map(w=>w.label).join(' · ')}</b></div>`;
+      u.members.forEach(m=>{
+        if(!m.memberId)return;
+        const v=visMap[m.memberId]||{name:u.name,vis:'club'};
+        postFeed(m.memberId,'round',{name:v.name,course:courseShort(r.courseId||'st-clair'),formule:r.formule,score:stab?st.ptsN+' pts':(PAR_TOTAL+st.brut)+' ('+fmtToPar(st.net)+' net)',birdies:st.birdies},v.vis);
+      });
+    }
     html+=`<div class="rescard">
       <div style="font-size:20px;font-weight:800;margin-bottom:6px;">${u.name}</div>
       <div class="resline"><span>${t('Classement du jour',"Today's rank")}</span><b class="num">${rk}${t('ᵉ','')} / ${n}</b></div>
       <div class="resline"><span>Score</span><b>${scoreLine}</b></div>
       <div class="resline"><span>Birdies / Eagles</span><b>${st.birdies} 🐦${st.eagles?' · '+st.eagles+' 🦅':''}</b></div>
       <div class="resline"><span>${t('Points gagnés','Points earned')}${teesSaved}</span><b style="color:var(--gold);">+${tees} 🏅</b></div>
+      ${trophyLine}
       ${potInfo&&r.birdiePot?`<div class="resline"><span>Prime aux Birdies${kOpt?` (${uShares} part${uShares>1?'s':''})`:' (non inscrit)'}</span><b style="color:var(--volt);">${potWin>0?potWin+' €':'—'}</b></div>`:''}
       <button class="btn btn-dark btn-sm" style="margin-top:12px;" onclick="shareCard(${idx})">${t('📤 Partager ma carte','📤 Share my card')}</button>
     </div>`;
@@ -2345,17 +2472,20 @@ function aggBadges(rounds){
 const FLBL={stroke:'Stroke Play',stableford:'Stableford',stab_brut:'Stableford brut',stab_net:'Stableford net',scramble:'Scramble',chouette:'Chouette'};
 async function renderAccount(){
   if(!S.user){$('account-body').innerHTML='<p class="sub">Connecte-toi depuis l\'accueil.</p>';return;}
-  let acc=S.user, history=[], myRounds=[], frRows=[], frMembers={}, liveFriends=[], challenges=[], allLeaguesList=[];
+  let acc=S.user, history=[], myRounds=[], frRows=[], frMembers={}, liveFriends=[], challenges=[], allLeaguesList=[], trophies=[];
   if(!S.user.guest&&sb){
     try{
-      const m=await sb.from('golf_members').select('id,name,club,gender,hcp_index,tee_color,tees_balance,tees_earned').eq('id',S.user.id).single();
+      const m=await sb.from('golf_members').select('id,name,club,gender,hcp_index,tee_color,tees_balance,tees_earned,feed_visibility').eq('id',S.user.id).single();
       if(!m.error){acc={...S.user,...m.data};S.user=acc;}
       const h=await sb.from('golf_tees_history').select('delta,reason,created_at').eq('member_id',S.user.id).order('created_at',{ascending:false}).limit(10);
       if(!h.error)history=h.data;
       /* historique de parties */
-      const rr=await sb.from('golf_round_players').select('scores,coups_rendus,hcp_index,tee_color,updated_at,golf_rounds(round_date,formule)')
+      const rr=await sb.from('golf_round_players').select('scores,coups_rendus,hcp_index,tee_color,updated_at,golf_rounds(round_date,formule,course_id)')
         .eq('member_id',S.user.id).order('updated_at',{ascending:false}).limit(200);
       if(!rr.error)myRounds=rr.data;
+      /* trophées */
+      const tro=await sb.from('golf_member_trophies').select('label,created_at').eq('member_id',S.user.id).order('created_at',{ascending:false}).limit(20);
+      if(!tro.error)trophies=tro.data;
       /* ligues */
       await loadMyLeagues();
       const lg=await sb.from('golf_leagues').select('id,name').order('name').limit(30);
@@ -2378,30 +2508,40 @@ async function renderAccount(){
       }
     }catch(e){}
   }
-  const t=COURSE.tees[acc.tee_color]||COURSE.tees.jaune;
+  const myTee=COURSE.tees[acc.tee_color]||COURSE.tees.jaune;
+  const stRounds=myRounds.filter(rp=>((rp.golf_rounds||{}).course_id||'st-clair')==='st-clair');
   const xp=acc.tees_earned??0, L=levelOf(xp);
   let html=`<div class="hero-award"><div class="lbl">${acc.name.toUpperCase()}${acc.club?' · '+acc.club.toUpperCase():''}</div>
   <div class="big">NIVEAU ${L.lvl}</div>
   <div class="lvl-bar"><i style="width:${L.pct}%"></i></div>
   <div class="lbl" style="margin-top:8px;">${xp} POINTS GAGNÉS · NIVEAU ${L.lvl+1} À ${L.next}</div>
   <div style="font-size:16px;margin-top:12px;color:var(--gold);font-weight:900;">Solde boutique : ${acc.tees_balance??0} 🏅</div>
-  <div style="font-size:14px;margin-top:8px;color:var(--muted);">Index ${acc.hcp_index} · ${t.label} ${t.dist} m · ${playingHcp(acc.hcp_index||0,acc.gender||'H',acc.tee_color||'jaune')} coups rendus à St Clair</div>
+  <div style="font-size:14px;margin-top:8px;color:var(--muted);">Index ${acc.hcp_index} · ${myTee.label} ${myTee.dist} m · ${playingHcp(acc.hcp_index||0,acc.gender||'H',acc.tee_color||'jaune')} coups rendus à St Clair</div>
   ${S.user.guest?'<div style="font-size:13px;margin-top:8px;color:var(--muted);">Mode invité — crée un compte pour cumuler tes points.</div>':''}</div>`;
   if(!S.user.guest){
     const nOn=!!store.get('notifs');
     html+=`<div class="switch ${nOn?'on':''}" onclick="${nOn?'disableNotifs()':'enableNotifs()'}"><span>${t('🔔 Notifications — défis, amis, birdies','🔔 Notifications — challenges, friends, birdies')}</span><span class="chk">${nOn?'✓':''}</span></div>`;
     html+=`<div class="switch" onclick="setLang('${LANG==='fr'?'en':'fr'}')"><span>🌐 ${LANG==='fr'?'Switch to English':'Passer en français'}</span><span class="chk" style="background:var(--panel);border-color:var(--line);color:var(--text);font-size:13px;">${LANG==='fr'?'EN':'FR'}</span></div>`;
+    /* visibilité du fil d'actus */
+    const vis=acc.feed_visibility||'club';
+    const VLBL={club:t('👁️ tout le club','👁️ whole club'),friends:t('💚 mes amis seulement','💚 friends only'),private:t('🔒 privé','🔒 private')};
+    html+=`<div class="switch" onclick="cycleFeedVis()"><span>📣 ${t('Mes actus visibles par : ','My feed visible to: ')}<b>${VLBL[vis]}</b></span><span class="chk" style="background:var(--panel);border-color:var(--line);color:var(--text);font-size:13px;">↻</span></div>`;
+    /* palmarès */
+    if(trophies.length){
+      html+='<div class="rescard"><div style="font-weight:800;font-size:17px;margin-bottom:6px;">🏆 '+t('Palmarès','Trophies')+' · '+trophies.length+'</div>'+
+        trophies.map(x=>`<div class="resline"><span>${x.label}</span><small class="num" style="color:var(--muted);">${new Date(x.created_at).toLocaleDateString('fr-FR',{day:'numeric',month:'short',year:'numeric'})}</small></div>`).join('')+'</div>';
+    }
   }
   let hS='',hA='';
   /* ---- badges ---- */
   if(!S.user.guest){
-    const agg=aggBadges(myRounds);
+    const agg=aggBadges(stRounds);
     const unlocked=BADGES.filter(b=>b.test(agg)).length;
     html+=`<div class="rescard"><div style="font-weight:800;font-size:17px;">🎖️ Badges · ${unlocked}/${BADGES.length}</div><div class="badge-grid">`+
       BADGES.map(b=>`<div class="badge ${b.test(agg)?'':'off'}"><div class="bi">${b.icon}</div><div class="bn">${b.name}</div><div class="bd">${b.desc}</div></div>`).join('')+'</div></div>';
     /* ---- carte éclectique (ringer perso) ---- */
     const best=Array(18).fill(null);
-    myRounds.forEach(rp=>{(Array.isArray(rp.scores)?rp.scores:[]).forEach((sc,i)=>{if(typeof sc==='number'&&i<18&&(best[i]==null||sc<best[i]))best[i]=sc;});});
+    stRounds.forEach(rp=>{(Array.isArray(rp.scores)?rp.scores:[]).forEach((sc,i)=>{if(typeof sc==='number'&&i<18&&(best[i]==null||sc<best[i]))best[i]=sc;});});
     if(best.some(x=>x!=null)){
       let covered=0,toPar=0,cells='';
       best.forEach((b,i)=>{
@@ -2417,10 +2557,10 @@ async function renderAccount(){
       </div>`;
     }
     /* ---- stats perso ---- */
-    if(myRounds.length){
+    if(stRounds.length){
       const per=Array(18).fill(null).map(()=>({n:0,sum:0}));
       const evol=[];
-      myRounds.forEach(rp=>{
+      stRounds.forEach(rp=>{
         const scores=Array.isArray(rp.scores)?rp.scores:[];
         const st=unitStats({ph:rp.coups_rendus||0,scores});
         if(st.thru>=9)evol.push(st.net);
@@ -2519,7 +2659,7 @@ async function renderAccount(){
         const st=unitStats({ph:rp.coups_rendus,scores:Array.isArray(rp.scores)?rp.scores:[]});
         const rd=rp.golf_rounds||{};
         const d=rd.round_date?new Date(rd.round_date+'T12:00:00').toLocaleDateString('fr-FR',{day:'numeric',month:'short'}):'';
-        return `<div class="resline"><span>${d} · ${FLBL[rd.formule]||rd.formule||''} <small style="color:${tc(rp.tee_color)};">●</small>${st.birdies?' <small>'+st.birdies+'🐦</small>':''}</span>
+        return `<div class="resline"><span>${d} · ${FLBL[rd.formule]||rd.formule||''}${(rd.course_id||'st-clair')!=='st-clair'?' <small style="color:var(--muted);font-weight:800;">✈️ Ext.</small>':''} <small style="color:${tc(rp.tee_color)};">●</small>${st.birdies?' <small>'+st.birdies+'🐦</small>':''}</span>
           <b class="num">${st.thru?PAR_TOTAL+st.brut:'—'} <small style="color:var(--muted);font-weight:600;">${fmtToPar(st.brut)} / ${fmtToPar(st.net)} net</small></b></div>`;
       }).join('')+'</div>';
   }else if(!S.user.guest){
@@ -2549,21 +2689,41 @@ function renderAccTabs(){
 }
 
 /* ================= INIT ================= */
-async function loadCourse(){
+let COURSES=[]; /* parcours pré-enregistrés */
+async function loadCourse(id){
   if(!sb)return;
   try{
-    const r=await sb.from('golf_courses').select('*').eq('id','st-clair').single();
+    const r=await sb.from('golf_courses').select('*').eq('id',id||'st-clair').single();
     if(!r.error&&r.data){
       COURSE={id:r.data.id,name:r.data.name,par:r.data.par,holes:r.data.holes,tees:r.data.tees};
       HOLES=COURSE.holes;PAR_TOTAL=COURSE.par;
     }
   }catch(e){}
 }
+async function loadCoursesList(){
+  if(!sb)return;
+  try{
+    const r=await sb.from('golf_courses').select('id,name,par').order('name');
+    if(!r.error)COURSES=r.data;
+  }catch(e){}
+}
+async function setCourse(id){
+  if(!id||id===COURSE.id)return;
+  await loadCourse(id);
+  S.setup.courseId=COURSE.id;
+  lbField=[];ringerCache={t:0,rows:[]};
+  renderFormuleGrid();
+}
+function courseShort(id){
+  const c=COURSES.find(x=>x.id===id);
+  return c?(c.id==='st-clair'?'St Clair':c.name.split(' —')[0]):id;
+}
 (async()=>{
   show('home');
-  await Promise.all([loadCourse(),restoreSession(),loadSettings()]);
+  await Promise.all([loadCourse(),loadCoursesList(),restoreSession(),loadSettings()]);
   const saved=store.get('round');
   if(saved&&saved.date===todayISO()&&saved.units&&saved.units.length){
+    if(saved.courseId&&saved.courseId!=='st-clair')await loadCourse(saved.courseId);
     S.round=saved;
     if(!S.user)S.user={guest:true,name:'',gender:'H',hcp_index:54,tee_color:'jaune',tees_balance:0}; /* reprise de partie invitée */
     if(S.user){loadFriends();loadMyLeagues();loadMyDefis();}
