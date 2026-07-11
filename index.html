@@ -307,6 +307,7 @@ td.sc-x{background:#000 !important;color:var(--coral) !important;}
   </div>
   <div class="hdr-right">
     <div id="hdr-user" class="tees-chip hidden" onclick="show('account')"></div>
+    <button class="hdr-btn" id="lang-btn" onclick="toggleLang()" style="font-size:13px;font-weight:900;letter-spacing:1px;">EN</button>
     <button class="hdr-btn" onclick="toggleMenu()">☰</button>
   </div>
 </header>
@@ -315,21 +316,22 @@ td.sc-x{background:#000 !important;color:var(--coral) !important;}
   <div class="modal" onclick="event.stopPropagation()">
     <h2>Menu</h2>
     <div class="modal-btns">
-      <button class="btn btn-volt" id="menu-resume" onclick="toggleMenu();show('play')">⛳ Reprendre la partie</button>
-      <button class="btn btn-dark" onclick="toggleMenu();show('lb')">🏆 Classements</button>
-      <button class="btn btn-dark" onclick="toggleMenu();show('cards')">📋 Cartes du groupe</button>
-      <button class="btn btn-dark" onclick="toggleMenu();show('defis')">⚔️ Défis</button>
-      <button class="btn btn-dark" onclick="toggleMenu();show('account')">👤 Mon compte & Points</button>
-      <button class="btn btn-ghost" onclick="toggleMenu();show('help')">? Aide</button>
-      <button class="btn btn-ghost" onclick="toggleMenu();openAdmin()">🔧 Espace club</button>
-      <button class="btn btn-red" id="menu-logout" onclick="toggleMenu();logout()">Se déconnecter</button>
-      <button class="btn btn-red" onclick="toggleMenu();confirmQuit()">✕ Quitter la partie</button>
+      <button class="btn btn-volt" id="menu-resume" onclick="toggleMenu();show('play')" data-i18n="resume">⛳ Reprendre la partie</button>
+      <button class="btn btn-dark" onclick="toggleMenu();show('lb')" data-i18n="lbs">🏆 Classements</button>
+      <button class="btn btn-dark" onclick="toggleMenu();show('cards')" data-i18n="groupcards">📋 Cartes du groupe</button>
+      <button class="btn btn-dark" onclick="toggleMenu();show('defis')" data-i18n="challenges">⚔️ Défis</button>
+      <button class="btn btn-dark" onclick="toggleMenu();show('account')" data-i18n="myaccount">👤 Mon compte & Points</button>
+      <button class="btn btn-ghost" onclick="toggleMenu();show('help')" data-i18n="help">? Aide</button>
+      <button class="btn btn-ghost" onclick="toggleMenu();openAdmin()" data-i18n="clubspace">🔧 Espace club</button>
+      <button class="btn btn-red" id="menu-logout" onclick="toggleMenu();logout()" data-i18n="logout">Se déconnecter</button>
+      <button class="btn btn-red" onclick="toggleMenu();confirmQuit()" data-i18n="quit">✕ Quitter la partie</button>
     </div>
   </div>
 </div>
 
 <!-- ================= HOME ================= -->
-<div id="screen-home" class="screen center">
+<div id="screen-home" class="screen center" style="position:relative;">
+  <button class="hdr-btn" id="lang-btn-home" onclick="toggleLang()" style="position:absolute;top:16px;right:16px;font-size:13px;font-weight:900;letter-spacing:1px;">EN</button>
   <div class="logo-hero">
     <svg width="210" height="105" viewBox="0 0 220 110">
       <text x="0" y="52" font-family="Arial Black,Arial" font-weight="900" font-size="56" fill="#fff" letter-spacing="2">G<tspan fill="#8dc63f">O</tspan>LF</text>
@@ -340,14 +342,13 @@ td.sc-x{background:#000 !important;color:var(--coral) !important;}
       <line x1="0" y1="98" x2="214" y2="98" stroke="#8dc63f" stroke-width="3"/>
     </svg>
   </div>
-  <div class="home-badge"><span class="live-dot"></span> SCORING LIVE · PARCOURS 18 TROUS</div>
-  <h1>Ta carte de score,<br>en direct.</h1>
-  <p class="sub">Scores du groupe, classement live du club,<br>points à gagner et Prime aux Birdies. 🏅</p>
+  <div class="home-badge"><span class="live-dot"></span> <span data-i18n="badge">SCORING LIVE · PARCOURS 18 TROUS</span></div>
+  <h1 data-i18n="h1">Ta carte de score,<br>en direct.</h1>
+  <p class="sub" data-i18n="hsub">Scores du groupe, classement live du club,<br>points à gagner et Prime aux Birdies. 🏅</p>
   <div style="width:100%;display:flex;flex-direction:column;gap:12px;margin-top:6px;">
-    <button class="btn btn-volt" onclick="openAuth('guest')">Jouer en invité</button>
-    <button class="btn btn-dark" onclick="openAuth('login')">🔑 Membre — Connexion</button>
-    <button class="btn btn-ghost btn-sm" onclick="openAuth('register')">Créer mon compte membre</button>
-    <button class="btn btn-ghost btn-sm" onclick="show('help')">Comment ça marche ?</button>
+    <button class="btn btn-volt" onclick="openAuth('login')" data-i18n="member">🔑 Membre</button>
+    <button class="btn btn-dark" onclick="guestStart()" data-i18n="guest">⛳ Invité — jouer directement</button>
+    <button class="btn btn-ghost btn-sm" onclick="show('help')" data-i18n="how">Comment ça marche ?</button>
   </div>
 </div>
 
@@ -357,24 +358,24 @@ td.sc-x{background:#000 !important;color:var(--coral) !important;}
     <h2 id="auth-title"></h2>
     <p class="sub" id="auth-sub"></p>
     <div style="display:flex;flex-direction:column;gap:13px;">
-      <div class="field"><label>NOM ET PRÉNOM</label><input id="a-name" maxlength="30" placeholder="ex : Nicolas Paviet"></div>
-      <div class="field" id="f-pin"><label>CODE PIN (4 CHIFFRES)</label><input id="a-pin" type="password" inputmode="numeric" maxlength="4" placeholder="••••"></div>
-      <div class="field" id="f-club"><label>TON CLUB</label><input id="a-club" maxlength="40" placeholder="Domaine de St Clair"></div>
-      <div class="field" id="f-gender"><label>GENRE</label>
+      <div class="field"><label data-i18n="fname">NOM ET PRÉNOM</label><input id="a-name" maxlength="30" placeholder="ex : Nicolas Paviet"></div>
+      <div class="field" id="f-pin"><label data-i18n="fpin">CODE PIN (4 CHIFFRES)</label><input id="a-pin" type="password" inputmode="numeric" maxlength="4" placeholder="••••"></div>
+      <div class="field" id="f-club"><label data-i18n="fclub">TON CLUB</label><input id="a-club" maxlength="40" placeholder="Domaine de St Clair"></div>
+      <div class="field" id="f-gender"><label data-i18n="fgender">GENRE</label>
         <div class="seg" style="justify-content:center;">
           <button id="a-gh" style="flex:1;" onclick="authG='H';syncAuthSeg()">Homme</button>
           <button id="a-gf" style="flex:1;" onclick="authG='F';syncAuthSeg()">Femme</button>
         </div>
       </div>
-      <div class="field" id="f-index"><label>INDEX (HANDICAP)</label><input id="a-index" type="number" inputmode="decimal" step="0.1" min="0" max="54" placeholder="ex : 18.4"></div>
-      <div class="field" id="f-tee"><label>BOULES DE DÉPART HABITUELLES</label>
+      <div class="field" id="f-index"><label data-i18n="findex">INDEX (HANDICAP)</label><input id="a-index" type="number" inputmode="decimal" step="0.1" min="0" max="54" placeholder="ex : 18.4"></div>
+      <div class="field" id="f-tee"><label data-i18n="ftee">BOULES DE DÉPART HABITUELLES</label>
         <div class="tee-row" id="a-tees" style="justify-content:center;"></div>
         <div style="text-align:center;margin-top:8px;"><span class="cr-badge" id="a-cr" style="margin:0;"></span></div>
       </div>
     </div>
     <div class="modal-btns">
-      <button class="btn btn-volt" id="auth-go" onclick="doAuth()">Valider</button>
-      <button class="btn btn-ghost" onclick="hide('auth-modal')">Annuler</button>
+      <button class="btn btn-volt" id="auth-go" onclick="doAuth()" data-i18n="validate">Valider</button>
+      <button class="btn btn-ghost" onclick="hide('auth-modal')" data-i18n="cancel">Annuler</button>
       <button class="btn btn-ghost btn-sm" id="auth-alt" onclick=""></button>
     </div>
   </div>
@@ -401,63 +402,63 @@ td.sc-x{background:#000 !important;color:var(--coral) !important;}
 
 <!-- ================= ÉTAPE 1 : HUB ================= -->
 <div id="screen-start" class="screen">
-  <div><span class="eyebrow">Étape 1</span><h2>On joue quoi ?</h2></div>
+  <div><span class="eyebrow" data-i18n="step1">Étape 1</span><h2 data-i18n="whatplay">On joue quoi ?</h2></div>
   <div id="club-banners" style="display:flex;flex-direction:column;gap:10px;"></div>
   <div id="replay-slot" style="width:100%;"></div>
-  <button class="btn btn-volt" onclick="show('formule')">⛳ Nouvelle partie</button>
+  <button class="btn btn-volt" onclick="show('formule')" data-i18n="newround">⛳ Nouvelle partie</button>
   <div class="panel" style="gap:10px;">
-    <div style="font-weight:800;font-size:17px;">👥 Rejoindre un groupe en cours</div>
-    <div class="sub" style="font-size:13px;">Le marqueur te donne le code affiché sur son écran de jeu — tu suis et saisis depuis ton propre téléphone, tout se synchronise.</div>
+    <div style="font-weight:800;font-size:17px;" data-i18n="jointitle">👥 Rejoindre un groupe en cours</div>
+    <div class="sub" style="font-size:13px;" data-i18n="joindesc">Le marqueur te donne le code affiché sur son écran de jeu — tu suis et saisis depuis ton propre téléphone, tout se synchronise.</div>
     <div style="display:flex;gap:8px;">
-      <input id="join-code" class="ainp" inputmode="numeric" maxlength="4" placeholder="Code à 4 chiffres" style="text-align:center;font-size:20px;letter-spacing:4px;">
-      <button class="btn btn-dark btn-sm" style="width:auto;padding:12px 20px;" onclick="joinGroup()">Rejoindre</button>
+      <input id="join-code" class="ainp" inputmode="numeric" maxlength="4" placeholder="Code à 4 chiffres" data-i18n-ph="joinph" style="text-align:center;font-size:20px;letter-spacing:4px;">
+      <button class="btn btn-dark btn-sm" style="width:auto;padding:12px 20px;" onclick="joinGroup()" data-i18n="joinbtn">Rejoindre</button>
     </div>
   </div>
-  <button class="btn btn-dark" onclick="show('defis')">⚔️ Défis <span id="defis-badge" class="badge" style="background:var(--coral);color:#fff;display:none;"></span></button>
+  <button class="btn btn-dark" onclick="show('defis')"><span data-i18n="challenges">⚔️ Défis</span> <span id="defis-badge" class="badge" style="background:var(--coral);color:#fff;display:none;"></span></button>
 </div>
 
 <!-- ================= DÉFIS ================= -->
 <div id="screen-defis" class="screen">
   <h2>⚔️ Défis</h2>
-  <p class="sub" style="font-size:14px;">Meilleur score net sur 7 jours, carte complète. Le gagnant prend la mise en points.</p>
+  <p class="sub" style="font-size:14px;" data-i18n="defisub">Meilleur score net sur 7 jours, carte complète. Le gagnant prend la mise en points.</p>
   <div id="defis-body" style="display:flex;flex-direction:column;gap:14px;width:100%;"></div>
-  <button class="btn btn-volt" onclick="backHome()">← Retour</button>
+  <button class="btn btn-volt" onclick="backHome()" data-i18n="back">← Retour</button>
 </div>
 
 <!-- ================= FORMULE ================= -->
 <div id="screen-formule" class="screen">
-  <div><span class="eyebrow">Étape 2/3</span><h2>La formule du jour</h2></div>
+  <div><span class="eyebrow" data-i18n="step2">Étape 2/3</span><h2 data-i18n="format">La formule du jour</h2></div>
   <div class="choice-grid" id="formule-grid"></div>
   <button class="btn btn-volt" onclick="gotoPlayers()">Continuer →</button>
 </div>
 
 <!-- ================= JOUEURS ================= -->
 <div id="screen-players" class="screen">
-  <div><span class="eyebrow">Étape 3/3</span><h2>Le groupe</h2></div>
+  <div><span class="eyebrow" data-i18n="step3">Étape 3/3</span><h2 data-i18n="group">Le groupe</h2></div>
   <p class="sub" id="players-sub">Combien êtes-vous ?</p>
   <div class="choice-grid" id="count-grid" style="grid-template-columns:repeat(4,1fr);"></div>
   <div id="players-list" style="display:flex;flex-direction:column;gap:12px;"></div>
   <div class="switch" id="birdie-optin" onclick="toggleBirdiePot()">
-    <span>🐦 Prime aux Birdies · 5 € / joueur</span>
+    <span data-i18n="pot">🐦 Prime aux Birdies · 5 € / joueur</span>
     <span class="chk" id="birdie-chk"></span>
   </div>
-  <p class="sub" style="font-size:13px;">Cagnotte = 5 € × participants du jour. Birdie = 1 part, eagle = 3 parts, partage au prorata. Touche 🐦 sur chaque joueur pour l'inscrire.</p>
-  <button class="btn btn-volt" onclick="startRound()">⛳ Départ trou n°1</button>
-  <button class="btn btn-ghost btn-sm" onclick="show('formule')">← Changer de formule</button>
+  <p class="sub" style="font-size:13px;" data-i18n="potdesc">Cagnotte = 5 € × participants du jour. Birdie = 1 part, eagle = 3 parts, partage au prorata. Touche 🐦 sur chaque joueur pour l'inscrire.</p>
+  <button class="btn btn-volt" onclick="startRound()" data-i18n="teeoff">⛳ Départ trou n°1</button>
+  <button class="btn btn-ghost btn-sm" onclick="show('formule')" data-i18n="changeformat">← Changer de formule</button>
 </div>
 
 <!-- ================= PLAY ================= -->
 <div id="sc-zone" class="sc-zone hidden">
   <div class="sc-scroll" id="sc-scroll"><table class="sc" id="sc-table"></table></div>
   <div id="group-live-wrap" class="hidden">
-    <div class="gl-title"><span class="live-dot"></span> CLASSEMENT DU GROUPE — LIVE</div>
+    <div class="gl-title"><span class="live-dot"></span> <span data-i18n="gltitle">CLASSEMENT DU GROUPE — LIVE</span></div>
     <div class="group-live" id="group-live"></div>
   </div>
 </div>
 <div id="screen-play" class="screen" style="padding-top:14px;gap:14px;">
   <div class="hole-head">
     <div>
-      <div class="hlbl">TROU</div>
+      <div class="hlbl" data-i18n="hole">TROU</div>
       <div class="hn num" id="hh-num">1</div>
     </div>
     <div class="hole-meta" id="hh-meta"></div>
@@ -475,10 +476,10 @@ td.sc-x{background:#000 !important;color:var(--coral) !important;}
   <div class="sync-dot" id="sync-dot"></div>
   <div class="sync-dot" id="gcode" style="color:var(--gold);"></div>
   <div style="display:flex;gap:10px;width:100%;">
-    <button class="btn btn-dark btn-sm" style="flex:1;" onclick="show('lb')">🏆 Classements</button>
-    <button class="btn btn-dark btn-sm" style="flex:1;" onclick="show('cards')">📋 Cartes</button>
+    <button class="btn btn-dark btn-sm" style="flex:1;" onclick="show('lb')" data-i18n="lbs">🏆 Classements</button>
+    <button class="btn btn-dark btn-sm" style="flex:1;" onclick="show('cards')" data-i18n="cards">📋 Cartes</button>
   </div>
-  <button class="btn btn-dark btn-sm" id="btn-finish" onclick="finishRound()">🏁 Terminer la partie</button>
+  <button class="btn btn-dark btn-sm" id="btn-finish" onclick="finishRound()" data-i18n="finish">🏁 Terminer la partie</button>
   <div class="legend">
     <span><i class="dot" style="background:var(--gold)"></i>EAGLE−</span>
     <span><i class="dot" style="background:var(--coral)"></i>BIRDIE</span>
@@ -493,49 +494,58 @@ td.sc-x{background:#000 !important;color:var(--coral) !important;}
 <div id="screen-cards" class="screen">
   <h2>📋 Cartes du groupe</h2>
   <div id="group-cards" style="display:flex;flex-direction:column;gap:14px;width:100%;"></div>
-  <button class="btn btn-volt" onclick="backHome()">← Retour</button>
+  <button class="btn btn-volt" onclick="backHome()" data-i18n="back">← Retour</button>
 </div>
 
 <!-- ================= LEADERBOARD TOURNOI ================= -->
 <div id="screen-lb" class="screen">
   <div style="display:flex;align-items:center;justify-content:space-between;width:100%;">
-    <h2>Classements</h2>
+    <h2 data-i18n="lbh">Classements</h2>
     <span style="display:flex;align-items:center;gap:7px;font-size:13px;font-weight:900;color:var(--coral);letter-spacing:1px;"><span class="live-dot"></span>LIVE</span>
   </div>
   <div class="tabs">
-    <button class="tab on" id="sc-jour" onclick="lbScope='jour';renderLb()">Jour</button>
-    <button class="tab" id="sc-saison" onclick="lbScope='saison';renderLb()">Saison</button>
-    <button class="tab" id="sc-ringer" onclick="lbScope='ringer';renderLb()">Ringer</button>
+    <button class="tab on" id="sc-jour" onclick="lbScope='jour';renderLb()" data-i18n="scjour">Jour</button>
+    <button class="tab" id="sc-saison" onclick="lbScope='saison';renderLb()" data-i18n="scsaison">Saison</button>
+    <button class="tab" id="sc-ringer" onclick="lbScope='ringer';renderLb()" data-i18n="scringer">Ringer</button>
   </div>
-  <div class="pot-banner hidden" id="pot-banner"><span>🐦 Cagnotte Birdies</span><span class="amount num" id="pot-amount">0 €</span></div>
+  <div class="pot-banner hidden" id="pot-banner"><span data-i18n="potbanner">🐦 Cagnotte Birdies</span><span class="amount num" id="pot-amount">0 €</span></div>
   <div class="pot-detail hidden" id="pot-detail"></div>
   <div class="tabs" id="mode-tabs">
     <button class="tab on" id="tab-brut" onclick="lbMode='brut';renderLb()">Brut</button>
     <button class="tab" id="tab-net" onclick="lbMode='net';renderLb()">Net</button>
   </div>
   <div class="lb" id="lb-list"></div>
-  <button class="btn btn-volt" onclick="backHome()">← Retour</button>
+  <button class="btn btn-volt" onclick="backHome()" data-i18n="back">← Retour</button>
 </div>
 
 <!-- ================= SUMMARY ================= -->
 <div id="screen-summary" class="screen center">
   <div style="font-size:36px;">🏆</div>
-  <h1>Partie terminée !</h1>
+  <h1 data-i18n="done">Partie terminée !</h1>
   <div id="summary-results" style="display:flex;flex-direction:column;gap:14px;width:100%;"></div>
-  <button class="btn btn-volt" onclick="newRound()">Nouvelle partie</button>
-  <button class="btn btn-dark" onclick="show('account')">👤 Mon compte & Points</button>
+  <button class="btn btn-volt" onclick="newRound()" data-i18n="newround2">Nouvelle partie</button>
+  <button class="btn btn-dark" onclick="show('account')" data-i18n="myaccount">👤 Mon compte & Points</button>
 </div>
 
 <!-- ================= ACCOUNT ================= -->
 <div id="screen-account" class="screen">
   <h2>👤 Mon compte</h2>
   <div id="account-body" style="display:flex;flex-direction:column;gap:14px;width:100%;"></div>
-  <button class="btn btn-volt" onclick="backHome()">← Retour</button>
+  <button class="btn btn-volt" onclick="backHome()" data-i18n="back">← Retour</button>
 </div>
 
 <!-- ================= HELP ================= -->
 <div id="screen-help" class="screen">
-  <h2>? Aide</h2>
+  <h2 data-i18n="help">? Aide</h2>
+  <div id="help-en" class="hidden" style="display:flex;flex-direction:column;gap:14px;width:100%;">
+    <div class="help-block"><b>Scoring</b> — everyone's scores on one screen, hole by hole. <b>PAR</b> in one tap, <b>+ / −</b> to adjust, <b>✕</b> = picked up. When every score is in, the group leaderboard appears and the next hole lights up. Everything saves live; the round survives reloads and works offline.</div>
+    <div class="help-block"><b>Formats</b> — Stroke Play (total strokes, gross & net), Stableford (par = 2 pts, birdie = 3, eagle = 4, bogey = 1; net adds strokes received), Scramble (1 ball per team of 2, team index = 25% of combined), and <b>La Chouette</b>: each hole distributes points in net — with 3 players the classic <b>4-2-0</b>; ties share (3-3-0, 4-1-1, 2-2-2); 2 players: 2-0; 4 players: 6-4-2-0.</div>
+    <div class="help-block"><b>Handicap (WHS)</b> — strokes received = index × (slope ÷ 113) + (CR − par), from the course's official ratings for your tees and gender, spread hole by hole using stroke index.</div>
+    <div class="help-block"><b>🏅 Points, levels & Ringer</b> — every round earns points (1st = 10×N, 2nd = 6×N, 3rd = 4×N, others = N, +5 per birdie). Lifetime points set your level and the <b>Season</b> ranking — spending in the shop never lowers it. <b>Ringer</b> = your best score on each hole, cumulated all year.</div>
+    <div class="help-block"><b>🐦 Birdie Pot</b> — €5 per entrant. Pot is split pro-rata: birdie = 1 share, eagle = 3 shares. No birdie? Carried to tomorrow.</div>
+    <div class="help-block"><b>👥 Members, friends & challenges</b> — activate an account with your name + a PIN: history, points, badges. Add friends to follow their live scores (💚 on the leaderboard) and challenge them: best net over 7 days, winner takes the stake. Each player in a group can link their account (🔑) or join from their own phone with the group code.</div>
+  </div>
+  <div id="help-fr" style="display:flex;flex-direction:column;gap:14px;width:100%;">
   <div class="help-block"><b>Compte membre</b> — nom + code PIN à 4 chiffres. Ton profil (club, index, boules), ton historique de parties et tes points sont conservés. Chaque joueur du groupe peut lier son compte au départ (bouton 🔑) pour avoir lui aussi son historique et ses points. En invité, rien n'est enregistré.</div>
   <div class="help-block"><b>👥 Amis</b> — depuis Mon compte, ajoute un membre par son nom. Dès qu'il accepte, tu le suis en live : ses scores du jour apparaissent sur ta fiche (● EN JEU) et il est marqué 💚 dans le leaderboard.</div>
   <div class="help-block"><b>Coups rendus (WHS / ffgolf)</b> — calculés automatiquement avec les données officielles du parcours : <b>index × (slope ÷ 113) + (SSS − par)</b>, selon tes boules de départ et ton genre. Exemple : index 18,4 · boules jaunes · homme → 18,4 × 138/113 + (68,2 − 72) = <b>19 coups rendus</b>, répartis trou par trou selon le HCP de chaque trou.</div>
@@ -546,7 +556,8 @@ td.sc-x{background:#000 !important;color:var(--coral) !important;}
   <div class="help-block"><b>📈 Niveaux & badges</b> — chaque point gagné compte pour ton niveau, à vie : dépenser à la boutique ne te fait pas redescendre. Les badges se débloquent automatiquement avec tes cartes (premier birdie, eagle, sous les 90, birdie sur les 18 trous…). Le classement <b>Saison</b> = total de points gagnés dans l'année.</div>
   <div class="help-block"><b>🗺️ Ringer</b> — ton meilleur score sur chaque trou, cumulé sur la saison. Chaque partie peut améliorer ta carte éclectique : le classement Ringer du club se joue toute l'année.</div>
   <div class="help-block"><b>🐦 Prime aux Birdies</b> — mise de 5 € par participant. Cagnotte = 5 € × participants du jour, partagée au prorata des parts : <b>birdie = 1 part, eagle = 3 parts</b>. Aucun birdie ? Reportée au lendemain.</div>
-  <button class="btn btn-volt" onclick="backHome()">← Retour</button>
+  </div>
+  <button class="btn btn-volt" onclick="backHome()" data-i18n="back">← Retour</button>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -593,11 +604,11 @@ function holeDist(h,tee){return (h.dists&&(h.dists[tee]??h.dists.rouge))||h.dist
 let HOLES=COURSE.holes, PAR_TOTAL=COURSE.par;
 
 const FORMULES=[
- {id:'stroke',label:'Stroke Play',desc:'Total des coups',min:1,max:4},
- {id:'stab_brut',label:'Stableford Brut',desc:'Points, sans handicap',min:1,max:4},
- {id:'stab_net',label:'Stableford Net',desc:'Points, coups rendus',min:1,max:4},
- {id:'scramble',label:'Scramble à 2',desc:'1 balle / équipe de 2',min:2,max:4,step:2},
- {id:'chouette',label:'La Chouette',desc:'4-2-0 · match par trou',min:2,max:4}
+ {id:'stroke',label:'Stroke Play',desc:'Total des coups',den:'Total strokes',min:1,max:4},
+ {id:'stab_brut',label:'Stableford Brut',desc:'Points, sans handicap',den:'Points, no handicap',min:1,max:4},
+ {id:'stab_net',label:'Stableford Net',desc:'Points, coups rendus',den:'Points, with strokes received',min:1,max:4},
+ {id:'scramble',label:'Scramble à 2',desc:'1 balle / équipe de 2',den:'1 ball / team of 2',min:2,max:4,step:2},
+ {id:'chouette',label:'La Chouette',desc:'4-2-0 · match par trou',den:'4-2-0 · hole-by-hole match',min:2,max:4}
 ];
 
 /* ================= ÉTAT ================= */
@@ -610,6 +621,59 @@ const store={
  get(k){try{const v=localStorage.getItem('stc_'+k);return v?JSON.parse(v):null;}catch(e){return mem[k]||null;}},
  set(k,v){try{if(v===null)localStorage.removeItem('stc_'+k);else localStorage.setItem('stc_'+k,JSON.stringify(v));}catch(e){mem[k]=v;}}
 };
+
+/* ================= LANGUE (FR par défaut, EN en option) ================= */
+let LANG=(function(){try{const v=localStorage.getItem('stc_lang');return v?JSON.parse(v):'fr';}catch(e){return 'fr';}})();
+function t(fr,en){return LANG==='en'?en:fr;}
+const I18N={
+ badge:['SCORING LIVE · PARCOURS 18 TROUS','LIVE SCORING · 18-HOLE COURSE'],
+ h1:['Ta carte de score,<br>en direct.','Your scorecard,<br>live.'],
+ hsub:['Scores du groupe, classement live du club,<br>points à gagner et Prime aux Birdies. 🏅','Group scoring, live club leaderboard,<br>points to earn and the Birdie Pot. 🏅'],
+ member:['🔑 Membre','🔑 Member'],
+ guest:['⛳ Invité — jouer directement','⛳ Guest — play right away'],
+ how:['Comment ça marche ?','How does it work?'],
+ step1:['Étape 1','Step 1'],whatplay:['On joue quoi ?','What are we playing?'],
+ newround:['⛳ Nouvelle partie','⛳ New round'],
+ jointitle:['👥 Rejoindre un groupe en cours','👥 Join a live group'],
+ joindesc:['Le marqueur te donne le code affiché sur son écran de jeu — tu suis et saisis depuis ton propre téléphone, tout se synchronise.','The marker gives you the code shown on their screen — follow along and enter scores from your own phone, everything syncs.'],
+ joinph:['Code à 4 chiffres','4-digit code'],joinbtn:['Rejoindre','Join'],
+ challenges:['⚔️ Défis','⚔️ Challenges'],
+ step2:['Étape 2/3','Step 2/3'],format:['La formule du jour',"Today's format"],
+ step3:['Étape 3/3','Step 3/3'],group:['Le groupe','The group'],
+ pot:['🐦 Prime aux Birdies · 5 € / joueur','🐦 Birdie Pot · €5 / player'],
+ potdesc:["Cagnotte = 5 € × participants du jour. Birdie = 1 part, eagle = 3 parts, partage au prorata. Touche 🐦 sur chaque joueur pour l'inscrire.","Pot = €5 × today's entrants. Birdie = 1 share, eagle = 3 shares, split pro-rata. Tap 🐦 on each player to enter them."],
+ teeoff:['⛳ Départ trou n°1','⛳ Tee off — hole 1'],changeformat:['← Changer de formule','← Change format'],
+ lbs:['🏆 Classements','🏆 Leaderboards'],cards:['📋 Cartes','📋 Cards'],finish:['🏁 Terminer la partie','🏁 Finish round'],
+ hole:['TROU','HOLE'],
+ resume:['⛳ Reprendre la partie','⛳ Resume round'],groupcards:['📋 Cartes du groupe','📋 Group cards'],
+ myaccount:['👤 Mon compte & Points','👤 My account & Points'],help:['? Aide','? Help'],
+ clubspace:['🔧 Espace club','🔧 Club admin'],logout:['Se déconnecter','Log out'],quit:['✕ Quitter la partie','✕ Quit round'],
+ back:['← Retour','← Back'],done:['Partie terminée !','Round complete!'],newround2:['Nouvelle partie','New round'],
+ fname:['NOM ET PRÉNOM','FULL NAME'],fpin:['CODE PIN (4 CHIFFRES)','PIN CODE (4 DIGITS)'],fclub:['TON CLUB','YOUR CLUB'],
+ fgender:['GENRE','GENDER'],findex:['INDEX (HANDICAP)','HANDICAP INDEX'],ftee:['BOULES DE DÉPART HABITUELLES','USUAL TEES'],
+ validate:['Valider','Confirm'],cancel:['Annuler','Cancel'],
+ gltitle:['CLASSEMENT DU GROUPE — LIVE','GROUP LEADERBOARD — LIVE'],
+ lbh:['Classements','Leaderboards'],
+ scjour:['Jour','Today'],scsaison:['Saison','Season'],scringer:['Ringer','Ringer'],
+ potbanner:['🐦 Cagnotte Birdies','🐦 Birdie Pot'],
+ defisub:['Meilleur score net sur 7 jours, carte complète. Le gagnant prend la mise en points.','Best net score over 7 days, full card. The winner takes the points stake.']
+};
+function applyLang(){
+  document.documentElement.lang=LANG;
+  document.querySelectorAll('[data-i18n]').forEach(el=>{
+    const k=el.getAttribute('data-i18n');
+    if(I18N[k])el.innerHTML=I18N[k][LANG==='en'?1:0];
+  });
+  document.querySelectorAll('[data-i18n-ph]').forEach(el=>{
+    const k=el.getAttribute('data-i18n-ph');
+    if(I18N[k])el.placeholder=I18N[k][LANG==='en'?1:0];
+  });
+  const hf=document.getElementById('help-fr'),he=document.getElementById('help-en');
+  if(hf&&he){hf.classList.toggle('hidden',LANG==='en');he.classList.toggle('hidden',LANG!=='en');}
+  ['lang-btn','lang-btn-home'].forEach(id=>{const b=document.getElementById(id);if(b)b.textContent=LANG==='fr'?'EN':'FR';});
+}
+function setLang(l){try{localStorage.setItem('stc_lang',JSON.stringify(l));}catch(e){}location.reload();}
+function toggleLang(){setLang(LANG==='fr'?'en':'fr');}
 
 /* ================= UTILS ================= */
 const $=id=>document.getElementById(id);
@@ -648,6 +712,7 @@ function show(name){
   if(name==='admin')renderAdmin();
   if(name==='start')renderStart();
   if(name==='defis')renderDefis();
+  if(name==='formule')renderFormuleGrid();
   if(name==='lb'){refreshField().then(renderLb);renderLb();startLbPoll();}else stopLbPoll();
   if(name==='account')renderAccount();
   window.scrollTo(0,0);
@@ -655,7 +720,14 @@ function show(name){
   $('menu-logout').style.display=S.user?'flex':'none';
   updateHdrUser();
 }
-function backHome(){show(S.round?'play':(S.user?'start':'home'));}
+function backHome(){show(S.round?'play':(S.user?(S.user.guest?'formule':'start'):'home'));}
+/* invité : direct vers les modes de jeu, zéro question */
+function guestStart(){
+  S.user={guest:true,name:'',gender:'H',hcp_index:54,tee_color:'jaune',tees_balance:0};
+  store.set('session',{guest:true,...S.user});
+  S.setup.players=[];S.setup.count=1;
+  show('formule');
+}
 function toggleMenu(){$('menu').classList.toggle('hidden');}
 function confirmQuit(){
   if(!S.round){show('home');return;}
@@ -664,7 +736,7 @@ function confirmQuit(){
 function logout(){S.user=null;store.set('session',null);S.round=null;show('home');toast('À bientôt !');}
 function updateHdrUser(){
   const el=$('hdr-user');
-  if(S.user){el.classList.remove('hidden');el.innerHTML=S.user.guest?('👤 '+S.user.name):('🏅 '+(S.user.tees_balance??0));}
+  if(S.user){el.classList.remove('hidden');el.innerHTML=S.user.guest?('👤 '+(S.user.name||t('Invité','Guest'))):('🏅 '+(S.user.tees_balance??0));}
   else el.classList.add('hidden');
 }
 
@@ -684,10 +756,10 @@ function rcvHole(ph,si){
 let authMode='guest', authG='H', authTee='jaune', linkTarget=null;
 function openAuth(mode,target){
   authMode=mode;linkTarget=target??null;
-  const T={guest:['Invité','Tes infos du jour — rien n\'est enregistré'],
-           login:['Connexion','Nom + ton code PIN'],
-           register:['Créer mon compte','Ton profil est conservé : club, index, boules, points 🏅'],
-           link:['Lier un membre','Le joueur entre son nom + son PIN : historique et points pour lui aussi']}[mode];
+  const T={guest:[t('Invité','Guest'),t('Tes infos du jour — rien n\'est enregistré','Just for today — nothing is saved')],
+           login:[t('Connexion','Sign in'),t('Nom + ton code PIN','Name + your PIN code')],
+           register:[t('Activer mon compte','Activate my account'),t('Ton profil est conservé : club, index, boules, points 🏅','Your profile is saved: club, index, tees, points 🏅')],
+           link:[t('Lier un membre','Link a member'),t('Le joueur entre son nom + son PIN : historique et points pour lui aussi','The player enters their name + PIN: history and points for them too')]}[mode];
   $('auth-title').textContent=T[0];$('auth-sub').textContent=T[1];
   const reg=mode==='register',gst=mode==='guest',lgn=mode==='login'||mode==='link';
   $('f-pin').classList.toggle('hidden',gst);
@@ -697,13 +769,13 @@ function openAuth(mode,target){
   $('f-tee').classList.toggle('hidden',lgn);
   $('a-name').value='';$('a-pin').value='';$('a-club').value='';$('a-index').value='';
   if(mode==='register'&&S.user&&S.user.guest){ /* conversion invité : préremplir */
-    $('a-name').value=S.user.name||'';
-    $('a-index').value=S.user.hcp_index??'';
+    $('a-name').value=S.user.name||(window._guestAttach&&window._guestAttach.name)||'';
+    if(S.user.hcp_index!=null&&S.user.hcp_index<54)$('a-index').value=S.user.hcp_index;
     authG=S.user.gender||'H';authTee=S.user.tee_color||'jaune';
   }
   const alt=$('auth-alt');
-  if(mode==='login'){alt.textContent='Pas encore de compte ? Créer mon compte';alt.onclick=()=>openAuth('register');alt.style.display='flex';}
-  else if(mode==='register'){alt.textContent='Déjà membre ? Me connecter';alt.onclick=()=>openAuth('login');alt.style.display='flex';}
+  if(mode==='login'){alt.textContent=t('Pas encore de compte ? Activer mon compte','No account yet? Activate my account');alt.onclick=()=>openAuth('register');alt.style.display='flex';}
+  else if(mode==='register'){alt.textContent=t('Déjà membre ? Me connecter','Already a member? Sign in');alt.onclick=()=>openAuth('login');alt.style.display='flex';}
   else alt.style.display='none';
   renderAuthTees();syncAuthSeg();
   unhide('auth-modal');$('a-name').focus();
@@ -1001,7 +1073,7 @@ async function restoreSession(){
 /* ================= SETUP ================= */
 function renderFormuleGrid(){
   $('formule-grid').innerHTML=FORMULES.map(f=>
-    `<button class="choice ${S.setup.formule===f.id?'sel':''}" onclick="pickFormule('${f.id}')">${f.label}<span class="desc">${f.desc}</span></button>`
+    `<button class="choice ${S.setup.formule===f.id?'sel':''}" onclick="pickFormule('${f.id}')">${f.label}<span class="desc">${LANG==='en'?(f.den||f.desc):f.desc}</span></button>`
   ).join('');
   let bh='';
   if((SETTINGS.points_multiplier||1)>1)
@@ -1021,7 +1093,7 @@ function gotoPlayers(){
   const f=FORMULES.find(x=>x.id===S.setup.formule);
   let counts=[];for(let c=f.min;c<=f.max;c+=(f.step||1))counts.push(c);
   if(!counts.includes(S.setup.count))S.setup.count=counts[0];
-  $('players-sub').textContent=f.id==='scramble'?'Scramble : équipes de 2 (2 ou 4 joueurs)':'Combien êtes-vous ?';
+  $('players-sub').textContent=f.id==='scramble'?t('Scramble : équipes de 2 (2 ou 4 joueurs)','Scramble: teams of 2 (2 or 4 players)'):t('Combien êtes-vous ?','How many players?');
   $('count-grid').innerHTML=counts.map(c=>
     `<button class="choice big ${S.setup.count===c?'sel':''}" onclick="pickCount(${c})">${c}</button>`
   ).join('');
@@ -1039,7 +1111,7 @@ function syncCR(i){
 function renderPlayersList(){
   let html='';
   for(let i=0;i<S.setup.count;i++){
-    const p=S.setup.players[i],isMe=i===0&&S.user;
+    const p=S.setup.players[i],isMe=i===0&&S.user&&!S.user.guest;
     html+=`<div class="pcard">
       <div class="row">
         <span class="pnum num">${i+1}</span>
@@ -1112,7 +1184,7 @@ function scoreClass(sc,par){
 }
 function resultLabel(sc,par){
   if(sc==null)return ['—',''];
-  if(sc==='X')return ['RAMASSÉE','xx'];
+  if(sc==='X')return [t('RAMASSÉE','PICKED UP'),'xx'];
   const d=sc-par;
   if(d<=-3)return ['ALBATROS','eagle'];
   if(d===-2)return ['EAGLE','eagle'];
@@ -1223,7 +1295,7 @@ function setSync(state){
   const el=$('sync-dot');
   if(!el)return;
   el.className='sync-dot '+(state==='ok'?'ok':state==='err'?'err':'');
-  el.textContent=state==='ok'?'● SYNCHRONISÉ AVEC LE CLUB':state==='err'?'○ HORS-LIGNE (SCORES LOCAUX)':'○ SYNCHRO…';
+  el.textContent=state==='ok'?t('● SYNCHRONISÉ AVEC LE CLUB','● SYNCED WITH THE CLUB'):state==='err'?t('○ HORS-LIGNE (SCORES LOCAUX)','○ OFFLINE (LOCAL SCORES)'):t('○ SYNCHRO…','○ SYNCING…');
 }
 /* sauvegarde scores (debounce par unité) */
 const saveTimers={};
@@ -1290,7 +1362,7 @@ function renderPlay(){
   $('hh-num').textContent=r.hole+1;
   $('hh-meta').innerHTML=`
     <div class="m"><div class="v num">${h.par}</div><div class="k">PAR</div></div>
-    <div class="m"><div class="v num">${holeDist(h,r.units[0].tee)}</div><div class="k">MÈTRES</div></div>
+    <div class="m"><div class="v num">${holeDist(h,r.units[0].tee)}</div><div class="k">${t('MÈTRES','METERS')}</div></div>
     <div class="m"><div class="v num">${h.si}</div><div class="k">HCP</div></div>`;
 
   if(r.formule==='chouette'){
@@ -1318,11 +1390,11 @@ function renderPlay(){
     </div>`;
   }).join('');
 
-  $('prev-n').textContent=r.hole>0?r.hole:'—';
-  $('next-n').textContent=r.hole<17?r.hole+2:'FIN';
+  document.querySelector('.btn-prev').innerHTML='← '+t('Trou','Hole')+' <span id="prev-n">'+(r.hole>0?r.hole:'—')+'</span>';
+  $('btn-next').innerHTML=t('Trou','Hole')+' <span id="next-n">'+(r.hole<17?r.hole+2:t('FIN','END'))+'</span> →';
   $('btn-next').classList.toggle('ready',holeDone);
   $('btn-finish').style.display=anyScores?'flex':'none';
-  $('gcode').textContent=r.code&&r.online!==false?('👥 CODE GROUPE : '+r.code+' — les autres peuvent rejoindre et saisir'):'';
+  $('gcode').textContent=r.code&&r.online!==false?(t('👥 CODE GROUPE : ','👥 GROUP CODE: ')+r.code+t(' — les autres peuvent rejoindre et saisir',' — others can join and enter scores')):'';
   persistRound();
 }
 function renderGroupLive(){
@@ -1484,7 +1556,7 @@ function renderLb(){
   $('tab-net').classList.toggle('on',lbMode==='net');
   const r=S.round;
   const stab=r&&r.formule.startsWith('stab');
-  $('tab-brut').textContent=stab?'Stableford Brut':'Brut';
+  $('tab-brut').textContent=stab?t('Stableford Brut','Stableford Gross'):t('Brut','Gross');
   $('tab-net').textContent=stab?'Stableford Net':'Net';
   const pool=allUnits().slice();
   if(SETTINGS.pro_card&&SETTINGS.pro_card.active&&Array.isArray(SETTINGS.pro_card.scores))
@@ -1615,12 +1687,12 @@ async function finishRound(){
     }
     html+=`<div class="rescard">
       <div style="font-size:20px;font-weight:800;margin-bottom:6px;">${u.name}</div>
-      <div class="resline"><span>Classement du jour</span><b class="num">${rk}ᵉ / ${n}</b></div>
+      <div class="resline"><span>${t('Classement du jour',"Today's rank")}</span><b class="num">${rk}${t('ᵉ','')} / ${n}</b></div>
       <div class="resline"><span>Score</span><b>${scoreLine}</b></div>
       <div class="resline"><span>Birdies / Eagles</span><b>${st.birdies} 🐦${st.eagles?' · '+st.eagles+' 🦅':''}</b></div>
-      <div class="resline"><span>Points gagnés${teesSaved}</span><b style="color:var(--gold);">+${tees} 🏅</b></div>
+      <div class="resline"><span>${t('Points gagnés','Points earned')}${teesSaved}</span><b style="color:var(--gold);">+${tees} 🏅</b></div>
       ${potInfo&&r.birdiePot?`<div class="resline"><span>Prime aux Birdies${kOpt?` (${uShares} part${uShares>1?'s':''})`:' (non inscrit)'}</span><b style="color:var(--volt);">${potWin>0?potWin+' €':'—'}</b></div>`:''}
-      <button class="btn btn-dark btn-sm" style="margin-top:12px;" onclick="shareCard(${idx})">📤 Partager ma carte</button>
+      <button class="btn btn-dark btn-sm" style="margin-top:12px;" onclick="shareCard(${idx})">${t('📤 Partager ma carte','📤 Share my card')}</button>
     </div>`;
   }
   if(potInfo){
@@ -1630,14 +1702,14 @@ async function finishRound(){
   const best=Math.min(...r.units.map(u=>rankMap.get(u)||n));
   let guestCta='';
   if(S.user&&S.user.guest){
-    window._guestAttach={ids:r.units.filter(u=>u.dbId&&u.members.length===1).map(u=>u.dbId)};
+    window._guestAttach={ids:r.units[0]&&r.units[0].dbId?[r.units[0].dbId]:[],name:r.units[0]?r.units[0].name:''};
     guestCta=`<div class="rescard" style="border-color:rgba(212,255,63,.5);">
-      <div style="font-weight:800;font-size:17px;margin-bottom:6px;">🏅 Garde cette carte !</div>
-      <div class="sub" style="font-size:14px;margin-bottom:12px;">Crée ton compte membre (ton nom + un code PIN, 10 secondes) : cette carte rejoint ton historique et tu commences à cumuler des points pour la boutique et le classement du club.</div>
-      <button class="btn btn-volt" onclick="openAuth('register')">Créer mon compte</button>
+      <div style="font-weight:800;font-size:17px;margin-bottom:6px;">${t('🏅 Garde cette carte !','🏅 Keep this card!')}</div>
+      <div class="sub" style="font-size:14px;margin-bottom:12px;">${t('Active ton compte membre (ton nom + un code PIN, 10 secondes) : cette carte rejoint ton historique et tu commences à cumuler des points pour la boutique et le classement du club.','Activate your member account (your name + a PIN, 10 seconds): this card joins your history and you start earning points for the shop and the club ranking.')}</div>
+      <button class="btn btn-volt" onclick="openAuth('register')">${t('Activer mon compte','Activate my account')}</button>
     </div>`;
   }
-  html=`<div class="hero-award"><div class="lbl">MEILLEUR CLASSEMENT DU GROUPE</div><div class="big">${best}ᵉ<span style="font-size:24px;color:var(--muted);"> / ${n}</span></div><div class="lbl" style="margin-top:6px;">PLATEAU DU JOUR : ${n} JOUEUR${n>1?'S':''}</div></div>`+guestCta+html;
+  html=`<div class="hero-award"><div class="lbl">${t('MEILLEUR CLASSEMENT DU GROUPE',"GROUP'S BEST FINISH")}</div><div class="big">${best}${t('ᵉ','')}<span style="font-size:24px;color:var(--muted);"> / ${n}</span></div><div class="lbl" style="margin-top:6px;">${t('PLATEAU DU JOUR : ','FIELD TODAY: ')}${n} ${t('JOUEUR','PLAYER')}${n>1?'S':''}</div></div>`+guestCta+html;
   html+=installHint();
   $('summary-results').innerHTML=html;
   window._share={units:r.units,formule:r.formule};
@@ -2036,7 +2108,8 @@ async function renderAccount(){
   ${S.user.guest?'<div style="font-size:13px;margin-top:8px;color:var(--muted);">Mode invité — crée un compte pour cumuler tes points.</div>':''}</div>`;
   if(!S.user.guest){
     const nOn=!!store.get('notifs');
-    html+=`<div class="switch ${nOn?'on':''}" onclick="${nOn?'disableNotifs()':'enableNotifs()'}"><span>🔔 Notifications — défis, amis, birdies</span><span class="chk">${nOn?'✓':''}</span></div>`;
+    html+=`<div class="switch ${nOn?'on':''}" onclick="${nOn?'disableNotifs()':'enableNotifs()'}"><span>${t('🔔 Notifications — défis, amis, birdies','🔔 Notifications — challenges, friends, birdies')}</span><span class="chk">${nOn?'✓':''}</span></div>`;
+    html+=`<div class="switch" onclick="setLang('${LANG==='fr'?'en':'fr'}')"><span>🌐 ${LANG==='fr'?'Switch to English':'Passer en français'}</span><span class="chk" style="background:var(--panel);border-color:var(--line);color:var(--text);font-size:13px;">${LANG==='fr'?'EN':'FR'}</span></div>`;
   }
   let hS='',hA='';
   /* ---- badges ---- */
@@ -2170,9 +2243,9 @@ async function renderAccount(){
 let accTab='profil';
 function renderAccTabs(){
   $('account-body').innerHTML=`<div class="tabs">
-    <button class="tab ${accTab==='profil'?'on':''}" onclick="accTab='profil';renderAccTabs()">Profil</button>
+    <button class="tab ${accTab==='profil'?'on':''}" onclick="accTab='profil';renderAccTabs()">${t('Profil','Profile')}</button>
     <button class="tab ${accTab==='stats'?'on':''}" onclick="accTab='stats';renderAccTabs()">Stats</button>
-    <button class="tab ${accTab==='amis'?'on':''}" onclick="accTab='amis';renderAccTabs()">Amis</button>
+    <button class="tab ${accTab==='amis'?'on':''}" onclick="accTab='amis';renderAccTabs()">${t('Amis','Friends')}</button>
   </div>`+(window._acc?window._acc[accTab]:'');
 }
 
@@ -2196,11 +2269,12 @@ async function loadCourse(){
     if(S.user)loadFriends();
     if(S.round.dbId)startRoundSync();
     show('play');
-    toast('Partie en cours reprise ⛳');
+    toast(t('Partie en cours reprise ⛳','Round resumed ⛳'));
   }else{
     if(saved)store.set('round',null);
-    if(S.user){loadFriends();show('start');}
+    if(S.user){loadFriends();show(S.user.guest?'formule':'start');}
   }
+  applyLang();
   if('serviceWorker' in navigator){try{navigator.serviceWorker.register('sw.js');}catch(e){}}
 })();
 </script>
