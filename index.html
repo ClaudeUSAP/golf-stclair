@@ -624,7 +624,7 @@ h1.mega .hl{background:var(--volt);color:#1c2405;padding:0 12px;border-radius:14
     <div class="help-block"><b>Scoring</b> — everyone's scores on one screen, hole by hole. <b>PAR</b> in one tap, <b>+ / −</b> to adjust, <b>✕</b> = picked up. When every score is in, the group leaderboard appears and the next hole lights up. Everything saves live; the round survives reloads and works offline.</div>
     <div class="help-block"><b>Formats</b> — Stroke Play (total strokes, gross & net), Stableford (par = 2 pts, birdie = 3, eagle = 4, bogey = 1; net adds strokes received), Scramble (1 ball per team of 2, team index = 25% of combined), and <b>La Chouette</b>: each hole distributes points in net — with 3 players the classic <b>4-2-0</b>; ties share (3-3-0, 4-1-1, 2-2-2); 2 players: 2-0; 4 players: 6-4-2-0.</div>
     <div class="help-block"><b>Handicap (WHS)</b> — strokes received = index × (slope ÷ 113) + (CR − par), from the course's official ratings for your tees and gender, spread hole by hole using stroke index.</div>
-    <div class="help-block"><b>🏅 Points, levels & Ringer</b> — every round earns points (1st = 10×N, 2nd = 6×N, 3rd = 4×N, others = N, +5 per birdie). Lifetime points set your level and the <b>Season</b> ranking — spending in the shop never lowers it. <b>Ringer</b> = your best score on each hole, cumulated all year.</div>
+    <div class="help-block"><b>🏅 Points & Ringer</b> — every round earns points: 5 for playing, +2 per player you beat (in net), with a bonus for beating players with a lower index than yours. +5 per birdie, +15 per eagle. Lifetime points make the <b>Season</b> ranking — spending in the shop never lowers it. <b>Ringer</b> = your best score on each hole, cumulated all year.</div>
     <div class="help-block"><b>🐦 Birdie Pot</b> — €5 per entrant. Pot is split pro-rata: birdie = 1 share, eagle = 3 shares. No birdie? Carried to tomorrow.</div>
     <div class="help-block"><b>👥 Members, friends & challenges</b> — activate an account with your name + a PIN: history, points, badges. Add friends to follow their live scores (💚 on the leaderboard) and challenge them: best net over 7 days, winner takes the stake. Each player in a group can link their account (🔑) or join from their own phone with the group code.</div>
   </div>
@@ -635,7 +635,7 @@ h1.mega .hl{background:var(--volt);color:#1c2405;padding:0 12px;border-radius:14
   <div class="help-block"><b>Saisie</b> — tous les scores du groupe se rentrent sur le même écran, trou par trou. <b>PAR</b> en un geste, <b>+ / −</b> pour ajuster, <b>✕</b> = balle ramassée. Quand tout le monde a son score, le classement du groupe apparaît en haut et le trou suivant s'allume. Tout est sauvegardé en direct.</div>
   <div class="help-block"><b>Stroke Play</b> — total des coups, classements brut et net. <b>Stableford</b> — par = 2 pts, birdie = 3, eagle = 4, bogey = 1 ; en net les coups rendus s'ajoutent trou par trou. <b>Scramble à 2</b> — 1 balle par équipe, index d'équipe = 25 % du cumul.</div>
   <div class="help-block"><b>La Chouette (2-3-4 joueurs)</b> — points distribués à chaque trou en net : à 3 joueurs, le fameux <b>4-2-0</b>. Égalité en tête : 3-3-0 ; égalité 2ᵉ place : 4-1-1 ; triple égalité : 2-2-2. À 2 joueurs : 2-0 ; à 4 : 6-4-2-0.</div>
-  <div class="help-block"><b>🏅 Les Points</b> — 1ᵉʳ = 10×N, 2ᵉ = 6×N, 3ᵉ = 4×N, autres = N (N = joueurs du jour) + 5 points par birdie. Crédités automatiquement sur ton compte membre. À échanger au club-house ou à convertir en avance pour la Grande Compétition de fin d'année.</div>
+  <div class="help-block"><b>🏅 Les Points</b> — 5 points pour ta partie, +2 par joueur battu (en net) dans le plateau du jour, avec un bonus quand tu bats un joueur mieux classé que toi (par tranche de 5 points d'index d'écart). +5 par birdie, +15 par eagle. Crédités automatiquement sur ton compte membre. À échanger au club-house ou à convertir en avance pour la Grande Compétition de fin d'année.</div>
   <div class="help-block"><b>📈 Niveaux & badges</b> — chaque point gagné compte pour ton niveau, à vie : dépenser à la boutique ne te fait pas redescendre. Les badges se débloquent automatiquement avec tes cartes (premier birdie, eagle, sous les 90, birdie sur les 18 trous…). Le classement <b>Saison</b> = total de points gagnés dans l'année.</div>
   <div class="help-block"><b>🗺️ Ringer</b> — ton meilleur score sur chaque trou, cumulé sur la saison. Chaque partie peut améliorer ta carte éclectique : le classement Ringer du club se joue toute l'année.</div>
   <div class="help-block"><b>🐦 Prime aux Birdies</b> — mise de 5 € par participant. Cagnotte = 5 € × participants du jour, partagée au prorata des parts : <b>birdie = 1 part, eagle = 3 parts</b>. Aucun birdie ? Reportée au lendemain.</div>
@@ -798,7 +798,7 @@ function todayISO(){return new Date().toISOString().slice(0,10);}
 /* ================= RÉGLAGES CLUB (admin) ================= */
 let SETTINGS={points_multiplier:1,multiplier_label:'',tv_enabled:true,
  prizes:[["Balle logotée St Clair",50],["Seau de practice",80],["Polo du club",300],["Green-fee invité",500],["1 coup rendu — Grande Compétition de fin d'année",200]],
- bareme:{first:10,second:6,third:4,other:1,birdie:5,defi:25},pro_card:null,event:null};
+ bareme:{other:5,win:2,gap:1,birdie:5,eagle:15,defi:25},pro_card:null,event:null};
 async function loadSettings(){
   if(!sb)return;
   try{
@@ -1936,12 +1936,21 @@ async function awardTrophiesFor(u,st,rk,n,r,visMap){
 }
 
 /* ================= FIN / TEES / CAGNOTTE ================= */
-function teesForRank(rank,n){
+/* barème v3 : points par joueur battu (en net), bonus selon l'écart d'index */
+function teesForWins(u,st,field){
   const b=SETTINGS.bareme||{};
-  if(rank===1)return (b.first??10)*n;
-  if(rank===2)return (b.second??6)*n;
-  if(rank===3)return (b.third??4)*n;
-  return (b.other??1)*n;
+  let wins=0,bonusT=0;
+  const myIdx=u.hcp??(u.members&&u.members[0]?u.members[0].hcp:54)??54;
+  field.forEach(o=>{
+    if(o===u)return;
+    const os=unitStats(o);
+    if(os.thru>0&&os.net>st.net){
+      wins++;
+      const oi=o.hcp??54;
+      if(myIdx>oi)bonusT+=Math.min(Math.floor((myIdx-oi)/5),6);
+    }
+  });
+  return {wins,pts:(b.other??5)+(b.win??2)*wins+(b.gap??1)*bonusT};
 }
 async function finishRound(){
   const r=S.round;
@@ -2002,7 +2011,10 @@ async function finishRound(){
   for(const [idx,u] of r.units.entries()){
     const st=unitStats(u);
     const rk=rankMap.get(u)||n;
-    let tees=(teesForRank(rk,n)+(SETTINGS.bareme.birdie??5)*st.birdies)*(SETTINGS.points_multiplier||1);
+    const bar=SETTINGS.bareme||{};
+    const home=(r.courseId||'st-clair')==='st-clair';
+    const w=home?teesForWins(u,st,field):{wins:0,pts:bar.other??5};
+    let tees=(w.pts+(bar.birdie??5)*st.birdies+(bar.eagle??15)*st.eagles)*(SETTINGS.points_multiplier||1);
     const kOpt=u.members.filter(m=>m.opt).length;
     const uShares=potSharesOf(st)*kOpt;
     const potWin=potInfo&&uShares>0?Math.round(potInfo.share*uShares*100)/100:0;
@@ -2040,6 +2052,7 @@ async function finishRound(){
       <div class="resline"><span>${t('Classement du jour',"Today's rank")}</span><b class="num">${rk}${t('ᵉ','')} / ${n}</b></div>
       <div class="resline"><span>Score</span><b>${scoreLine}</b></div>
       <div class="resline"><span>Birdies / Eagles</span><b>${st.birdies} 🐦${st.eagles?' · '+st.eagles+' 🦅':''}</b></div>
+      ${home?`<div class="resline"><span>${t('Joueurs battus','Players beaten')}</span><b class="num">${w.wins} / ${n-1}</b></div>`:''}
       <div class="resline"><span>${t('Points gagnés','Points earned')}${teesSaved}</span><b style="color:var(--gold);">+${tees} 🏅</b></div>
       ${trophyLine}
       ${potInfo&&r.birdiePot?`<div class="resline"><span>Prime aux Birdies${kOpt?` (${uShares} part${uShares>1?'s':''})`:' (non inscrit)'}</span><b style="color:var(--volt);">${potWin>0?potWin+' €':'—'}</b></div>`:''}
@@ -2272,14 +2285,14 @@ async function renderAdmin(){
     </div></div>`;
   html+=`<div class="rescard"><div style="font-weight:800;font-size:17px;margin-bottom:10px;">🏅 Barème des points</div>
     <div class="agrid">
-      <div><label>1ᵉʳ (×N)</label><input class="ainp" type="number" value="${AD.bareme.first}" oninput="AD.bareme.first=this.value"></div>
-      <div><label>2ᵉ (×N)</label><input class="ainp" type="number" value="${AD.bareme.second}" oninput="AD.bareme.second=this.value"></div>
-      <div><label>3ᵉ (×N)</label><input class="ainp" type="number" value="${AD.bareme.third}" oninput="AD.bareme.third=this.value"></div>
-      <div><label>AUTRES (×N)</label><input class="ainp" type="number" value="${AD.bareme.other}" oninput="AD.bareme.other=this.value"></div>
+      <div><label>PARTICIPATION</label><input class="ainp" type="number" value="${AD.bareme.other}" oninput="AD.bareme.other=this.value"></div>
+      <div><label>PAR JOUEUR BATTU</label><input class="ainp" type="number" value="${AD.bareme.win}" oninput="AD.bareme.win=this.value"></div>
+      <div><label>BONUS / 5 PTS D'INDEX</label><input class="ainp" type="number" value="${AD.bareme.gap}" oninput="AD.bareme.gap=this.value"></div>
       <div><label>PAR BIRDIE</label><input class="ainp" type="number" value="${AD.bareme.birdie}" oninput="AD.bareme.birdie=this.value"></div>
+      <div><label>PAR EAGLE</label><input class="ainp" type="number" value="${AD.bareme.eagle}" oninput="AD.bareme.eagle=this.value"></div>
       <div><label>DÉFI GAGNÉ</label><input class="ainp" type="number" value="${AD.bareme.defi}" oninput="AD.bareme.defi=this.value"></div>
     </div>
-    <div style="font-size:12px;color:var(--muted);margin-top:8px;">N = nombre de joueurs du jour.</div></div>`;
+    <div style="font-size:12px;color:var(--muted);margin-top:8px;">Battre un joueur mieux classé rapporte le bonus par tranche de 5 points d'index d'écart (plafonné à 6 tranches). À l'extérieur : participation + birdies/eagles seulement.</div></div>`;
   html+=`<div class="rescard"><div style="font-weight:800;font-size:17px;margin-bottom:10px;">🎁 Boutique des Points</div>
     <div style="display:flex;flex-direction:column;gap:8px;">`+
     AD.prizes.map((p,i)=>`<div style="display:flex;gap:8px;align-items:center;">
@@ -2317,7 +2330,7 @@ async function adminSave(){
   if(!adminPin){openAdmin();return;}
   const patch={points_multiplier:AD.mult,multiplier_label:AD.label.trim(),tv_enabled:AD.tv,
     prizes:AD.prizes.filter(p=>(p[0]||'').trim()&&+p[1]>0).map(p=>[p[0].trim(),+p[1]]),
-    bareme:{first:+AD.bareme.first||10,second:+AD.bareme.second||6,third:+AD.bareme.third||4,other:+AD.bareme.other||1,birdie:+AD.bareme.birdie||5,defi:+AD.bareme.defi||25},
+    bareme:{other:+AD.bareme.other||5,win:+AD.bareme.win||2,gap:Number.isFinite(+AD.bareme.gap)?+AD.bareme.gap:1,birdie:+AD.bareme.birdie||5,eagle:+AD.bareme.eagle||15,defi:+AD.bareme.defi||25},
     pro_card:{name:AD.pro.name.trim()||'Le Pro',active:AD.pro.active,scores:AD.pro.scores.map(v=>v==null||v===''?null:+v)},
     event:{name:AD.event.name.trim(),desc:AD.event.desc.trim(),active:AD.event.active&&!!AD.event.name.trim()}};
   try{
