@@ -513,6 +513,7 @@ td.sc-x{background:#000 !important;color:var(--coral) !important;}
     <button class="tab" id="sc-saison" onclick="lbScope='saison';renderLb()" data-i18n="scsaison">Saison</button>
     <button class="tab" id="sc-ringer" onclick="lbScope='ringer';renderLb()" data-i18n="scringer">Ringer</button>
   </div>
+  <div id="lb-filter" class="group-live" style="margin:0;"></div>
   <div class="pot-banner hidden" id="pot-banner"><span data-i18n="potbanner">🐦 Cagnotte Birdies</span><span class="amount num" id="pot-amount">0 €</span></div>
   <div class="pot-detail hidden" id="pot-detail"></div>
   <div class="tabs" id="mode-tabs">
@@ -857,7 +858,30 @@ async function doAuth(){
   }
   $('auth-go').textContent='Valider';
 }
-function afterLogin(){loadFriends();show('start');}
+function afterLogin(){loadFriends();loadMyLeagues();show('start');}
+
+/* ---- gestion des ligues ---- */
+async function createLeague(){
+  const name=($('league-name')&&$('league-name').value.trim())||'';
+  if(name.length<3){toast(t('Nom de ligue trop court','League name too short'),1);return;}
+  const s=store.get('session');
+  const r=await rpcCall('golf_league_create',{p_me:S.user.id,p_pin:s.pin,p_name:name});
+  if(r.error){toast(r.error.message==='NOM_DEJA_PRIS'?t('Ce nom de ligue existe déjà','League name already taken'):t('Erreur','Error'),1);return;}
+  toast(t('Ligue créée : ','League created: ')+r.data.name);
+  delete leagueMembersCache[r.data.id];
+  await loadMyLeagues();renderAccount();
+}
+async function joinLeague(id){
+  const s=store.get('session');
+  const r=await rpcCall('golf_league_join',{p_me:S.user.id,p_pin:s.pin,p_league:id});
+  if(!r.error){toast(t('Ligue rejointe','League joined'));delete leagueMembersCache[id];await loadMyLeagues();renderAccount();}
+}
+async function leaveLeague(id){
+  if(!confirm(t('Quitter cette ligue ?','Leave this league?')))return;
+  const s=store.get('session');
+  const r=await rpcCall('golf_league_leave',{p_me:S.user.id,p_pin:s.pin,p_league:id});
+  if(!r.error){toast(t('Ligue quittée','League left'));delete leagueMembersCache[id];await loadMyLeagues();renderAccount();}
+}
 
 /* ================= ÉTAPE 1 : HUB ================= */
 function replayLast(){
@@ -1503,7 +1527,43 @@ function allUnits(){
   const mine=S.round?S.round.units:[];
   return [...mine,...lbField];
 }
-/* ---- Saison (classement club par tees gagnés) ---- */
+/* ---- Ligues & portées de classement ---- */
+let LEAGUES=[];               /* mes ligues [{id,name}] */
+let lbLeague='club';          /* 'club' ou id de ligue (saison/ringer) */
+let lbDayScope='groupe';      /* 'groupe' ou 'club' (jour) */
+const leagueMembersCache={};  /* leagueId -> Set(member_id) */
+async function loadMyLeagues(){
+  LEAGUES=[];
+  if(!sb||!S.user||S.user.guest)return;
+  try{
+    const r=await sb.from('golf_league_members').select('league_id,golf_leagues(id,name)').eq('member_id',S.user.id);
+    if(!r.error)LEAGUES=r.data.map(x=>({id:x.league_id,name:(x.golf_leagues&&x.golf_leagues.name)||'?'}));
+    if(lbLeague!=='club'&&!LEAGUES.some(l=>l.id===lbLeague))lbLeague='club';
+  }catch(e){}
+}
+async function leagueMemberSet(id){
+  if(leagueMembersCache[id])return leagueMembersCache[id];
+  try{
+    const r=await sb.from('golf_league_members').select('member_id').eq('league_id',id);
+    if(!r.error){leagueMembersCache[id]=new Set(r.data.map(x=>x.member_id));return leagueMembersCache[id];}
+  }catch(e){}
+  return new Set();
+}
+function renderLbFilter(){
+  const el=$('lb-filter');
+  if(!el)return;
+  if(lbScope==='jour'){
+    if(!S.round){el.innerHTML='';return;}
+    el.innerHTML=[['groupe',t('Mon groupe','My group')],['club',t('Tout le club','Whole club')]].map(([k,lab])=>
+      `<div class="gl-chip ${lbDayScope===k?'first':''}" onclick="lbDayScope='${k}';renderLb()" style="cursor:pointer;">${lab}</div>`).join('');
+  }else{
+    if(!LEAGUES.length){el.innerHTML='';return;}
+    el.innerHTML=[{id:'club',name:t('Tout le club','Whole club')},...LEAGUES].map(l=>
+      `<div class="gl-chip ${lbLeague===l.id?'first':''}" onclick="lbLeague='${l.id}';renderLb()" style="cursor:pointer;">${l.name}</div>`).join('');
+  }
+}
+
+/* ---- Saison (classement club par points gagnés) ---- */
 let lbScope='jour';
 let saisonCache={t:0,rows:[]}, ringerCache={t:0,rows:[]};
 async function loadSaison(){
@@ -1513,9 +1573,14 @@ async function loadSaison(){
     if(!r.error)saisonCache={t:Date.now(),rows:r.data};
   }catch(e){}
 }
-function renderSaisonHtml(){
+async function renderSaisonHtml(){
+  let rows=saisonCache.rows;
+  if(lbLeague!=='club'){
+    const set=await leagueMemberSet(lbLeague);
+    rows=rows.filter(m=>set.has(m.id));
+  }
   let html='',pos=0,prev=null;
-  saisonCache.rows.forEach((m,i)=>{
+  rows.forEach((m,i)=>{
     if(prev===null||m.tees_earned!==prev){pos=i+1;prev=m.tees_earned;}
     const L=levelOf(m.tees_earned);
     const me=S.user&&!S.user.guest&&S.user.id===m.id;
@@ -1552,9 +1617,14 @@ async function loadRinger(){
     ringerCache={t:Date.now(),rows};
   }catch(e){}
 }
-function renderRingerHtml(){
+async function renderRingerHtml(){
+  let rows=ringerCache.rows;
+  if(lbLeague!=='club'){
+    const set=await leagueMemberSet(lbLeague);
+    rows=rows.filter(e=>set.has(e.id));
+  }
   let html='';
-  ringerCache.rows.forEach((e,i)=>{
+  rows.forEach((e,i)=>{
     const me=S.user&&!S.user.guest&&S.user.id===e.id;
     html+=`<div class="lb-row ${me?'me':''} ${i===0?'top1':''}">
       <span class="lb-pos num">${i+1}</span>
@@ -1566,6 +1636,7 @@ function renderRingerHtml(){
 }
 function renderLb(){
   ['jour','saison','ringer'].forEach(s=>$('sc-'+s).classList.toggle('on',lbScope===s));
+  renderLbFilter();
   if(lbScope!=='jour'){
     $('mode-tabs').classList.add('hidden');
     $('pot-banner').classList.add('hidden');$('pot-detail').classList.add('hidden');
@@ -1580,7 +1651,8 @@ function renderLb(){
   const stab=r&&r.formule.startsWith('stab');
   $('tab-brut').textContent=stab?t('Stableford Brut','Stableford Gross'):t('Brut','Gross');
   $('tab-net').textContent=stab?'Stableford Net':'Net';
-  const pool=allUnits().slice();
+  const groupOnly=lbDayScope==='groupe'&&S.round;
+  const pool=groupOnly?S.round.units.slice():allUnits().slice();
   if(SETTINGS.pro_card&&SETTINGS.pro_card.active&&Array.isArray(SETTINGS.pro_card.scores))
     pool.push({name:'🎯 '+(SETTINGS.pro_card.name||'Le Pro'),hcp:0,ph:0,scores:SETTINGS.pro_card.scores,members:[],pro:true});
   let rows=pool.map(u=>{
@@ -2098,7 +2170,7 @@ function aggBadges(rounds){
 const FLBL={stroke:'Stroke Play',stableford:'Stableford',stab_brut:'Stableford brut',stab_net:'Stableford net',scramble:'Scramble',chouette:'Chouette'};
 async function renderAccount(){
   if(!S.user){$('account-body').innerHTML='<p class="sub">Connecte-toi depuis l\'accueil.</p>';return;}
-  let acc=S.user, history=[], myRounds=[], frRows=[], frMembers={}, liveFriends=[], challenges=[];
+  let acc=S.user, history=[], myRounds=[], frRows=[], frMembers={}, liveFriends=[], challenges=[], allLeaguesList=[];
   if(!S.user.guest&&sb){
     try{
       const m=await sb.from('golf_members').select('id,name,club,gender,hcp_index,tee_color,tees_balance,tees_earned').eq('id',S.user.id).single();
@@ -2109,6 +2181,10 @@ async function renderAccount(){
       const rr=await sb.from('golf_round_players').select('scores,coups_rendus,hcp_index,tee_color,updated_at,golf_rounds(round_date,formule)')
         .eq('member_id',S.user.id).order('updated_at',{ascending:false}).limit(200);
       if(!rr.error)myRounds=rr.data;
+      /* ligues */
+      await loadMyLeagues();
+      const lg=await sb.from('golf_leagues').select('id,name').order('name').limit(30);
+      if(!lg.error)allLeaguesList=lg.data;
       /* amis */
       const fr=await sb.from('golf_friends').select('id,requester,addressee,status').or(`requester.eq.${S.user.id},addressee.eq.${S.user.id}`);
       if(!fr.error){
@@ -2239,9 +2315,27 @@ async function renderAccount(){
           <button style="color:var(--muted);font-size:15px;" onclick="removeFriend('${fid}')">✕</button>
         </span></div>`;
     });
-    if(!accepted.length&&!pendingIn.length&&!pendingOut.length)fh+='<div class="pd-empty">Ajoute des membres par leur nom pour suivre leurs scores en live.</div>';
+    if(!accepted.length&&!pendingIn.length&&!pendingOut.length)fh+='<div class="pd-empty">'+t('Ajoute des membres par leur nom pour suivre leurs scores en live.','Add members by name to follow their live scores.')+'</div>';
     fh+='</div>';
-    hA+=fh+`<button class="btn btn-dark" onclick="show('defis')">⚔️ Mes défis</button>`;
+    hA+=fh+`<button class="btn btn-dark" onclick="show('defis')">${t('Mes défis','My challenges')}</button>`;
+    /* ---- ligues ---- */
+    let lh=`<div class="rescard"><div style="font-weight:800;font-size:17px;margin-bottom:10px;">${t('Mes ligues','My leagues')}</div>
+      <div class="sub" style="font-size:13px;margin-bottom:10px;">${t('Une ligue = un classement Saison et Ringer entre vous (ex : les Seniors du mardi).','A league = its own Season and Ringer rankings (e.g. Tuesday Seniors).')}</div>
+      <div style="display:flex;gap:8px;margin-bottom:10px;">
+        <input id="league-name" class="ainp" placeholder="${t('Nom de la nouvelle ligue','New league name')}" maxlength="30" style="flex:1;">
+        <button class="btn btn-volt btn-sm" style="width:auto;padding:12px 18px;" onclick="createLeague()">${t('+ Créer','+ Create')}</button>
+      </div>`;
+    LEAGUES.forEach(l=>{
+      lh+=`<div class="resline"><span><b style="font-size:16px;">${l.name}</b></span>
+        <button style="color:var(--muted);font-size:15px;" onclick="leaveLeague('${l.id}')">✕</button></div>`;
+    });
+    const mine=new Set(LEAGUES.map(l=>l.id));
+    (allLeaguesList||[]).filter(l=>!mine.has(l.id)).slice(0,8).forEach(l=>{
+      lh+=`<div class="resline"><span>${l.name}</span>
+        <button class="btn btn-dark btn-sm" style="width:auto;padding:8px 14px;" onclick="joinLeague('${l.id}')">${t('Rejoindre','Join')}</button></div>`;
+    });
+    lh+='</div>';
+    hA+=lh;
   }
   /* ---- historique de parties ---- */
   if(myRounds.length){
@@ -2296,13 +2390,13 @@ async function loadCourse(){
   const saved=store.get('round');
   if(saved&&saved.date===todayISO()&&saved.units&&saved.units.length){
     S.round=saved;
-    if(S.user)loadFriends();
+    if(S.user){loadFriends();loadMyLeagues();}
     if(S.round.dbId)startRoundSync();
     show('play');
     toast(t('Partie en cours reprise ⛳','Round resumed ⛳'));
   }else{
     if(saved)store.set('round',null);
-    if(S.user){loadFriends();show(S.user.guest?'formule':'start');}
+    if(S.user){loadFriends();loadMyLeagues();show(S.user.guest?'formule':'start');}
   }
   applyLang();
   if('serviceWorker' in navigator){try{navigator.serviceWorker.register('sw.js');}catch(e){}}
