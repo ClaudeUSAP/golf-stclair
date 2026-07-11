@@ -405,16 +405,16 @@ td.sc-x{background:#000 !important;color:var(--coral) !important;}
   <div><span class="eyebrow" data-i18n="step1">Étape 1</span><h2 data-i18n="whatplay">On joue quoi ?</h2></div>
   <div id="club-banners" style="display:flex;flex-direction:column;gap:10px;"></div>
   <div id="replay-slot" style="width:100%;"></div>
-  <button class="btn btn-volt" onclick="show('formule')" data-i18n="newround">⛳ Nouvelle partie</button>
-  <div class="panel" style="gap:10px;">
-    <div style="font-weight:800;font-size:17px;" data-i18n="jointitle">👥 Rejoindre un groupe en cours</div>
+  <button class="btn btn-volt" onclick="show('formule')" data-i18n="newround">Nouvelle partie</button>
+  <button class="btn btn-volt" onclick="toggleJoin()" data-i18n="jointitle">Rejoindre une compétition en cours</button>
+  <div id="join-panel" class="panel hidden" style="gap:10px;">
     <div class="sub" style="font-size:13px;" data-i18n="joindesc">Le marqueur te donne le code affiché sur son écran de jeu — tu suis et saisis depuis ton propre téléphone, tout se synchronise.</div>
     <div style="display:flex;gap:8px;">
       <input id="join-code" class="ainp" inputmode="numeric" maxlength="4" placeholder="Code à 4 chiffres" data-i18n-ph="joinph" style="text-align:center;font-size:20px;letter-spacing:4px;">
       <button class="btn btn-dark btn-sm" style="width:auto;padding:12px 20px;" onclick="joinGroup()" data-i18n="joinbtn">Rejoindre</button>
     </div>
   </div>
-  <button class="btn btn-dark" onclick="show('defis')"><span data-i18n="challenges">⚔️ Défis</span> <span id="defis-badge" class="badge" style="background:var(--coral);color:#fff;display:none;"></span></button>
+  <button class="btn btn-volt" onclick="show('defis')"><span data-i18n="challenges">Défis</span> <span id="defis-badge" class="badge" style="background:var(--coral);color:#fff;display:none;"></span></button>
 </div>
 
 <!-- ================= DÉFIS ================= -->
@@ -439,8 +439,13 @@ td.sc-x{background:#000 !important;color:var(--coral) !important;}
   <div class="choice-grid" id="count-grid" style="grid-template-columns:repeat(4,1fr);"></div>
   <div id="players-list" style="display:flex;flex-direction:column;gap:12px;"></div>
   <div class="switch" id="birdie-optin" onclick="toggleBirdiePot()">
-    <span data-i18n="pot">🐦 Prime aux Birdies · 5 € / joueur</span>
+    <span data-i18n="pot">Activer la Prime aux Birdies</span>
     <span class="chk" id="birdie-chk"></span>
+  </div>
+  <div id="pot-config" class="hidden" style="display:flex;align-items:center;gap:10px;">
+    <span class="sub" style="font-size:15px;font-weight:700;" data-i18n="potstake">Mise par joueur</span>
+    <input id="pot-amount-in" class="ainp" type="number" inputmode="numeric" min="1" max="100" value="5" style="width:90px;text-align:center;font-size:18px;" oninput="S.setup.potAmount=this.value">
+    <span style="font-weight:800;font-size:18px;">€</span>
   </div>
   <p class="sub" style="font-size:13px;" data-i18n="potdesc">Cagnotte = 5 € × participants du jour. Birdie = 1 part, eagle = 3 parts, partage au prorata. Touche 🐦 sur chaque joueur pour l'inscrire.</p>
   <button class="btn btn-volt" onclick="startRound()" data-i18n="teeoff">⛳ Départ trou n°1</button>
@@ -610,12 +615,12 @@ function holeDist(h,tee){return (h.dists&&(h.dists[tee]??h.dists.rouge))||h.dist
 let HOLES=COURSE.holes, PAR_TOTAL=COURSE.par;
 
 const FORMULES=[
- {id:'stroke',label:'Stroke Play',desc:'Total des coups',den:'Total strokes',min:1,max:4},
- {id:'stab_brut',label:'Stableford Brut',desc:'Points, sans handicap',den:'Points, no handicap',min:1,max:4},
- {id:'stab_net',label:'Stableford Net',desc:'Points, coups rendus',den:'Points, with strokes received',min:1,max:4},
+ {id:'stroke',label:'Stroke Play',desc:'Total des coups · brut & net',den:'Total strokes · gross & net',min:1,max:4},
+ {id:'stableford',label:'Stableford',desc:'Points · brut & net',den:'Points · gross & net',min:1,max:4},
  {id:'scramble',label:'Scramble à 2',desc:'1 balle / équipe de 2',den:'1 ball / team of 2',min:2,max:4,step:2},
  {id:'chouette',label:'La Chouette',desc:'4-2-0 · match par trou',den:'4-2-0 · hole-by-hole match',min:2,max:4}
 ];
+function normFormule(id){return id&&id.indexOf('stab')===0?'stableford':id;}
 
 /* ================= ÉTAT ================= */
 let S={user:null,round:null,setup:{formule:'stroke',count:1,players:[],birdiePot:false}};
@@ -639,15 +644,15 @@ const I18N={
  guest:['⛳ Invité — jouer directement','⛳ Guest — play right away'],
  how:['Comment ça marche ?','How does it work?'],
  step1:['Étape 1','Step 1'],whatplay:['On joue quoi ?','What are we playing?'],
- newround:['⛳ Nouvelle partie','⛳ New round'],
- jointitle:['👥 Rejoindre un groupe en cours','👥 Join a live group'],
+ newround:['Nouvelle partie','New round'],
+ jointitle:['Rejoindre une compétition en cours','Join a live competition'],
  joindesc:['Le marqueur te donne le code affiché sur son écran de jeu — tu suis et saisis depuis ton propre téléphone, tout se synchronise.','The marker gives you the code shown on their screen — follow along and enter scores from your own phone, everything syncs.'],
  joinph:['Code à 4 chiffres','4-digit code'],joinbtn:['Rejoindre','Join'],
- challenges:['⚔️ Défis','⚔️ Challenges'],
+ challenges:['Défis','Challenges'],
  step2:['Étape 2/3','Step 2/3'],format:['La formule du jour',"Today's format"],
  step3:['Étape 3/3','Step 3/3'],group:['Le groupe','The group'],
- pot:['🐦 Prime aux Birdies · 5 € / joueur','🐦 Birdie Pot · €5 / player'],
- potdesc:["Cagnotte = 5 € × participants du jour. Birdie = 1 part, eagle = 3 parts, partage au prorata. Touche 🐦 sur chaque joueur pour l'inscrire.","Pot = €5 × today's entrants. Birdie = 1 share, eagle = 3 shares, split pro-rata. Tap 🐦 on each player to enter them."],
+ pot:['Activer la Prime aux Birdies','Enable the Birdie Pot'],
+ potdesc:["Cagnotte = mise × participants du jour. Birdie = 1 part, eagle = 3 parts, partage au prorata. Touche 🐦 sur chaque joueur pour l'inscrire.","Pot = stake × today's entrants. Birdie = 1 share, eagle = 3 shares, split pro-rata. Tap 🐦 on each player to enter them."],
  teeoff:['⛳ Départ trou n°1','⛳ Tee off — hole 1'],changeformat:['← Changer de formule','← Change format'],
  lbs:['🏆 Classements','🏆 Leaderboards'],cards:['📋 Cartes','📋 Cards'],finish:['🏁 Terminer la partie','🏁 Finish round'],
  hole:['TROU','HOLE'],
@@ -662,6 +667,7 @@ const I18N={
  lbh:['Classements','Leaderboards'],
  scjour:['Jour','Today'],scsaison:['Saison','Season'],scringer:['Ringer','Ringer'],
  potbanner:['🐦 Cagnotte Birdies','🐦 Birdie Pot'],
+ potstake:['Mise par joueur','Stake per player'],
  defisub:['Meilleur score net sur 7 jours, carte complète. Le gagnant prend la mise en points.','Best net score over 7 days, full card. The winner takes the points stake.']
 };
 function applyLang(){
@@ -857,7 +863,7 @@ function afterLogin(){loadFriends();show('start');}
 function replayLast(){
   const ls=store.get('lastSetup');
   if(!ls){show('formule');return;}
-  S.setup={formule:ls.formule,count:ls.count,birdiePot:ls.birdiePot,optIn:[],players:ls.players.map(p=>({...p}))};
+  S.setup={formule:normFormule(ls.formule)||'stroke',count:ls.count,birdiePot:ls.birdiePot,potAmount:ls.potAmount||5,optIn:[],players:ls.players.map(p=>({...p}))};
   if(ls.players[0]&&S.user)S.setup.players[0]={...ls.players[0],name:S.user.name,memberId:S.user.guest?null:S.user.id};
   startRound();
 }
@@ -1095,8 +1101,14 @@ function defaultPlayer(i){
   if(i===0&&S.user)return {name:S.user.name,gender:S.user.gender||'H',hcp:S.user.hcp_index??54,tee:S.user.tee_color||'jaune',opt:true,memberId:S.user.guest?null:S.user.id};
   return {name:'',gender:'H',hcp:'',tee:'jaune',opt:true,memberId:null};
 }
+function toggleJoin(){
+  const p=$('join-panel');
+  p.classList.toggle('hidden');
+  if(!p.classList.contains('hidden'))$('join-code').focus();
+}
 function gotoPlayers(){
-  const f=FORMULES.find(x=>x.id===S.setup.formule);
+  S.setup.formule=normFormule(S.setup.formule)||'stroke';
+  const f=FORMULES.find(x=>x.id===S.setup.formule)||FORMULES[0];
   let counts=[];for(let c=f.min;c<=f.max;c+=(f.step||1))counts.push(c);
   if(!counts.includes(S.setup.count))S.setup.count=counts[0];
   $('players-sub').textContent=f.id==='scramble'?t('Scramble : équipes de 2 (2 ou 4 joueurs)','Scramble: teams of 2 (2 or 4 players)'):t('Combien êtes-vous ?','How many players?');
@@ -1142,6 +1154,11 @@ function renderPlayersList(){
   $('players-list').innerHTML=html;
   $('birdie-optin').classList.toggle('on',S.setup.birdiePot);
   $('birdie-chk').textContent=S.setup.birdiePot?'✓':'';
+  const pc=$('pot-config');
+  if(pc){
+    pc.classList.toggle('hidden',!S.setup.birdiePot);
+    $('pot-amount-in').value=S.setup.potAmount||5;
+  }
 }
 function toggleBirdiePot(){S.setup.birdiePot=!S.setup.birdiePot;renderPlayersList();}
 
@@ -1255,7 +1272,8 @@ async function startRound(){
       opt:S.setup.birdiePot&&p.opt,ph:playingHcp(hcp,p.gender,p.tee),
       memberId:p.memberId||((i===0&&S.user&&!S.user.guest)?S.user.id:null)});
   }
-  store.set('lastSetup',{formule:S.setup.formule,count:S.setup.count,birdiePot:S.setup.birdiePot,
+  const potAmount=Math.max(1,Math.min(100,parseInt(S.setup.potAmount)||5));
+  store.set('lastSetup',{formule:S.setup.formule,count:S.setup.count,birdiePot:S.setup.birdiePot,potAmount,
     players:S.setup.players.slice(0,S.setup.count).map(p=>({name:p.name,gender:p.gender,hcp:p.hcp,tee:p.tee,opt:p.opt,memberId:p.memberId||null}))});
   let units=[];
   if(S.setup.formule==='scramble'){
@@ -1271,14 +1289,14 @@ async function startRound(){
       scores:Array(18).fill(null),members:[p],me:true,memberId:p.memberId}));
   }
   const joinCode=String(Math.floor(1000+Math.random()*9000));
-  S.round={formule:S.setup.formule,units,hole:0,birdiePot:S.setup.birdiePot,dbId:null,online:false,date:todayISO(),code:joinCode};
+  S.round={formule:S.setup.formule,units,hole:0,birdiePot:S.setup.birdiePot,potAmount,dbId:null,online:false,date:todayISO(),code:joinCode};
   persistRound();
   show('play');
   toast('Bonne partie ! ⛳');
   /* enregistrement DB en arrière-plan */
   if(sb){
     try{
-      const r=await sb.from('golf_rounds').insert({course_id:COURSE.id,formule:S.round.formule,birdie_pot:S.round.birdiePot,join_code:joinCode}).select('id').single();
+      const r=await sb.from('golf_rounds').insert({course_id:COURSE.id,formule:S.round.formule,birdie_pot:S.round.birdiePot,pot_amount:potAmount,join_code:joinCode}).select('id').single();
       if(r.error)throw r.error;
       S.round.dbId=r.data.id;
       const rows=units.map(u=>({round_id:r.data.id,member_id:u.memberId||null,display_name:u.name,ini:u.ini,
@@ -1328,8 +1346,7 @@ async function flushSaves(){
 /* ================= ÉCRAN DE JEU ================= */
 function metric(u){
   const r=S.round,st=unitStats(u);
-  if(r.formule==='stab_brut')return {v:st.ptsB,disp:st.ptsB+' pts',better:'high'};
-  if(r.formule==='stab_net')return {v:st.ptsN,disp:st.ptsN+' pts',better:'high'};
+  if(r.formule.indexOf('stab')===0)return {v:st.ptsN,disp:st.ptsN+' pts',better:'high'};
   return {v:st.brut,disp:fmtToPar(st.brut),better:'low'};
 }
 function renderPlay(){
@@ -1345,8 +1362,7 @@ function renderPlay(){
   r.units.forEach(u=>{
     const st=unitStats(u);
     let tot;
-    if(r.formule==='stab_brut')tot=st.ptsB;
-    else if(r.formule==='stab_net')tot=st.ptsN;
+    if(r.formule.indexOf('stab')===0)tot=st.ptsN;
     else tot=st.thru?fmtToPar(st.brut):'–';
     rows+=`<tr><td class="lbl">${u.ini}</td>`;
     for(let i=0;i<18;i++){
@@ -1467,7 +1483,7 @@ async function refreshField(){
   if(!sb)return;
   try{
     const r=await sb.from('golf_rounds')
-      .select('id,formule,birdie_pot,status,golf_round_players(id,display_name,ini,gender,hcp_index,tee_color,coups_rendus,opt_pot,scores,member_id)')
+      .select('id,formule,birdie_pot,pot_amount,status,golf_round_players(id,display_name,ini,gender,hcp_index,tee_color,coups_rendus,opt_pot,scores,member_id)')
       .eq('round_date',todayISO()).eq('course_id',COURSE.id);
     if(r.error)throw r.error;
     const myIds=new Set((S.round?S.round.units.map(u=>u.dbId):[]).filter(Boolean));
@@ -1476,7 +1492,7 @@ async function refreshField(){
       (rd.golf_round_players||[]).forEach(p=>{
         if(myIds.has(p.id))return; /* mes unités = état local plus frais */
         lbField.push({name:p.display_name,ini:p.ini,hcp:p.hcp_index,ph:p.coups_rendus,
-          scores:Array.isArray(p.scores)?p.scores:[],opt:p.opt_pot,me:false,memberId:p.member_id});
+          scores:Array.isArray(p.scores)?p.scores:[],opt:p.opt_pot,potAmt:rd.pot_amount||5,me:false,memberId:p.member_id});
       });
     });
   }catch(e){}
@@ -1588,12 +1604,13 @@ function renderLb(){
   });
   $('lb-list').innerHTML=html||'<div class="lb-row"><span class="lb-name">Personne sur le parcours pour l\'instant — sois le premier ! ⛳</span></div>';
 
-  /* cagnotte réelle du jour */
+  /* cagnotte réelle du jour (mise propre à chaque partie) */
+  const myAmt=r?(r.potAmount||5):5;
   const optMine=r&&r.birdiePot?S.round.units.reduce((a,u)=>a+u.members.filter(m=>m.opt).length,0):0;
   const optField=lbField.filter(u=>u.opt);
   const nOpt=optMine+optField.length;
   if(nOpt>0){
-    const pot=5*nOpt;
+    const pot=optMine*myAmt+optField.reduce((a,u)=>a+(u.potAmt||5),0);
     $('pot-amount').textContent=pot+' €';
     $('pot-banner').classList.remove('hidden');
     const entries=[];
@@ -1646,7 +1663,7 @@ async function finishRound(){
   }else{
     ranked=field.map(u=>{
       const st=unitStats(u);
-      const v=stab?(r.formule==='stab_net'?st.ptsN:st.ptsB):st.net;
+      const v=stab?st.ptsN:st.net;
       return {u,v};
     }).sort((a,b)=>stab?b.v-a.v:a.v-b.v);
   }
@@ -1660,7 +1677,7 @@ async function finishRound(){
   const optMine=r.birdiePot?r.units.reduce((a,u)=>a+u.members.filter(m=>m.opt).length,0):0;
   let potInfo=null;
   if(optMine+optField.length>0){
-    const pot=5*(optMine+optField.length);
+    const pot=optMine*(r.potAmount||5)+optField.reduce((a,u)=>a+(u.potAmt||5),0);
     let totalShares=0;
     if(r.birdiePot)r.units.forEach(u=>{totalShares+=potSharesOf(unitStats(u))*u.members.filter(m=>m.opt).length;});
     optField.forEach(u=>{totalShares+=potSharesOf(unitStats(u));});
@@ -1678,7 +1695,7 @@ async function finishRound(){
     const uShares=potSharesOf(st)*kOpt;
     const potWin=potInfo&&uShares>0?Math.round(potInfo.share*uShares*100)/100:0;
     let scoreLine;
-    if(stab)scoreLine=(r.formule==='stab_net'?st.ptsN:st.ptsB)+' points';
+    if(stab)scoreLine=st.ptsN+' pts net · '+st.ptsB+' '+t('brut','gross');
     else if(r.formule==='chouette')scoreLine=fmtPts(chouettePts[idx])+' pts chouette';
     else scoreLine=(PAR_TOTAL+st.brut)+' · '+fmtToPar(st.brut)+' brut / '+fmtToPar(st.net)+' net';
     let teesSaved='';
@@ -2078,7 +2095,7 @@ function aggBadges(rounds){
   a.birdieHoles=bh.size;
   return a;
 }
-const FLBL={stroke:'Stroke Play',stab_brut:'Stableford brut',stab_net:'Stableford net',scramble:'Scramble',chouette:'Chouette'};
+const FLBL={stroke:'Stroke Play',stableford:'Stableford',stab_brut:'Stableford brut',stab_net:'Stableford net',scramble:'Scramble',chouette:'Chouette'};
 async function renderAccount(){
   if(!S.user){$('account-body').innerHTML='<p class="sub">Connecte-toi depuis l\'accueil.</p>';return;}
   let acc=S.user, history=[], myRounds=[], frRows=[], frMembers={}, liveFriends=[], challenges=[];
