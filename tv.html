@@ -128,13 +128,13 @@ async function refresh(){
   try{
     const today=new Date().toISOString().slice(0,10);
     const r=await sb.from('golf_rounds')
-      .select('birdie_pot,golf_round_players(display_name,hcp_index,coups_rendus,opt_pot,scores)')
+      .select('birdie_pot,pot_amount,golf_round_players(display_name,hcp_index,coups_rendus,opt_pot,scores)')
       .eq('round_date',today).eq('course_id','st-clair');
     if(r.error)return;
     const players=[];
     r.data.forEach(rd=>(rd.golf_round_players||[]).forEach(p=>{
       const st=stats(Array.isArray(p.scores)?p.scores:[],p.coups_rendus);
-      players.push({name:p.display_name,hcp:p.hcp_index,opt:p.opt_pot,...st});
+      players.push({name:p.display_name,hcp:p.hcp_index,opt:p.opt_pot,potAmt:rd.pot_amount||5,...st});
     }));
     if(SETTINGS.pro_card&&SETTINGS.pro_card.active&&Array.isArray(SETTINGS.pro_card.scores)){
       const st=stats(SETTINGS.pro_card.scores,0);
@@ -161,7 +161,7 @@ async function refresh(){
     const opted=players.filter(p=>p.opt);
     const potEl=document.getElementById('pot');
     if(opted.length){
-      const pot=5*opted.length;
+      const pot=opted.reduce((a,p)=>a+(p.potAmt||5),0);
       const withShares=opted.map(p=>({...p,sh:p.birdies+3*p.eagles})).filter(p=>p.sh>0).sort((a,b)=>b.sh-a.sh);
       const total=withShares.reduce((a,p)=>a+p.sh,0);
       potEl.style.display='block';
