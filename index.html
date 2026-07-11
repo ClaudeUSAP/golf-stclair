@@ -568,6 +568,12 @@ td.sc-x{background:#000 !important;color:var(--coral) !important;}
 const SB_URL="https://dzryuqiwodkgmnphcndg.supabase.co";
 const SB_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR6cnl1cWl3b2RrZ21ucGhjbmRnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM2MjMyNTUsImV4cCI6MjA5OTE5OTI1NX0.Kvjb_dyN51wwQEt9_BRZk_SX_E21Y6SNCdWpBJcgH2Q";
 const sb=(typeof supabase!=="undefined")?supabase.createClient(SB_URL,SB_KEY,{auth:{persistSession:false}}):null;
+/* les erreurs d'auth arrivent maintenant en données ({error:'PIN_FAUX'}) pour que le compteur anti-brute-force persiste */
+async function rpcCall(fn,args){
+  const r=await sb.rpc(fn,args);
+  if(!r.error&&r.data&&r.data.error)return {data:null,error:{message:r.data.error}};
+  return r;
+}
 
 /* ================= PARCOURS (fallback local, remplacé par la DB) ================= */
 let COURSE={
@@ -813,10 +819,10 @@ async function doAuth(){
   try{
     let res;
     if(authMode==='register'){
-      res=await sb.rpc('golf_register',{p_name:name,p_pin:pin,p_club:$('a-club').value.trim(),
+      res=await rpcCall('golf_register',{p_name:name,p_pin:pin,p_club:$('a-club').value.trim(),
         p_gender:authG,p_index:parseFloat($('a-index').value)||54,p_tee:authTee});
     }else{
-      res=await sb.rpc('golf_login',{p_name:name,p_pin:pin});
+      res=await rpcCall('golf_login',{p_name:name,p_pin:pin});
     }
     if(res.error)throw res.error;
     if(authMode==='link'){
@@ -831,16 +837,16 @@ async function doAuth(){
     }
     S.user={guest:false,...res.data};
     store.set('session',{guest:false,id:S.user.id,name:S.user.name,pin});
-    /* conversion invité : rattacher la carte qui vient d'être jouée */
+    /* conversion invité : rattacher la carte qui vient d'être jouée (RPC vérifié par PIN) */
     if(authMode==='register'&&window._guestAttach&&window._guestAttach.ids.length){
-      try{await sb.from('golf_round_players').update({member_id:S.user.id}).in('id',window._guestAttach.ids);}catch(e){}
+      try{await rpcCall('golf_claim_card',{p_player:window._guestAttach.ids[0],p_member:S.user.id,p_pin:pin});}catch(e){}
       window._guestAttach=null;
     }
     hide('auth-modal');
     toast((authMode==='register'?'Compte créé — bienvenue ':'Salut ')+S.user.name+' 🏅');
     afterLogin();
   }catch(e){
-    const msg={NOM_DEJA_PRIS:'Ce nom est déjà pris',PIN_FAUX:'Code PIN incorrect',INCONNU:'Nom inconnu — crée ton compte',PIN_INVALIDE:'PIN : 4 chiffres',NOM_TROP_COURT:'Nom trop court'}[(e.message||'').trim()]||'Erreur réseau — réessaie';
+    const msg={NOM_DEJA_PRIS:t('Ce nom est déjà pris','This name is already taken'),PIN_FAUX:t('Code PIN incorrect','Wrong PIN code'),INCONNU:t('Nom inconnu — active ton compte','Unknown name — activate your account'),PIN_INVALIDE:t('PIN : 4 chiffres','PIN: 4 digits'),NOM_TROP_COURT:t('Nom trop court','Name too short'),VERROUILLE:t('Trop d\'essais — réessaie dans 15 minutes','Too many attempts — try again in 15 minutes')}[(e.message||'').trim()]||t('Erreur réseau — réessaie','Network error — try again');
     toast(msg,1);
   }
   $('auth-go').textContent='Valider';
@@ -950,7 +956,7 @@ async function renderDefis(){
     for(const c of challenges.filter(c=>c.status==='active'&&c.end_date<todayISO())){
       const [cs,ds]=await Promise.all([bestNetWindow(c.challenger,c.start_date,c.end_date),bestNetWindow(c.challenged,c.start_date,c.end_date)]);
       try{
-        const r=await sb.rpc('golf_challenge_settle',{p_id:c.id,p_cs:cs,p_ds:ds});
+        const r=await rpcCall('golf_challenge_settle',{p_id:c.id,p_cs:cs,p_ds:ds});
         if(!r.error){c.status='done';c.winner=r.data.winner;}
       }catch(e){}
     }
@@ -1024,7 +1030,7 @@ async function addFriend(){
   if(!name){toast('Entre le nom du membre',1);return;}
   const s=store.get('session');
   try{
-    const r=await sb.rpc('golf_friend_request',{p_me:S.user.id,p_pin:s.pin,p_name:name});
+    const r=await rpcCall('golf_friend_request',{p_me:S.user.id,p_pin:s.pin,p_name:name});
     if(r.error)throw r.error;
     toast(r.data.status==='accepted'?'Vous êtes amis avec '+r.data.friend+' ! 💚':'Demande envoyée à '+r.data.friend);
     try{
@@ -1042,7 +1048,7 @@ async function addFriend(){
 async function respondFriend(id,accept,requesterId){
   const s=store.get('session');
   try{
-    const r=await sb.rpc('golf_friend_respond',{p_me:S.user.id,p_pin:s.pin,p_request:id,p_accept:accept});
+    const r=await rpcCall('golf_friend_respond',{p_me:S.user.id,p_pin:s.pin,p_request:id,p_accept:accept});
     if(r.error)throw r.error;
     toast(accept?'Ami accepté 💚':'Demande refusée');
     if(accept&&requesterId)pushNotify({member_id:requesterId,title:'💚 Ami accepté',body:S.user.name+' a accepté ta demande — vous pouvez vous suivre en live'});
@@ -1053,7 +1059,7 @@ async function removeFriend(fid){
   if(!confirm('Retirer cet ami ?'))return;
   const s=store.get('session');
   try{
-    await sb.rpc('golf_friend_remove',{p_me:S.user.id,p_pin:s.pin,p_friend:fid});
+    await rpcCall('golf_friend_remove',{p_me:S.user.id,p_pin:s.pin,p_friend:fid});
     await loadFriends();renderAccount();
   }catch(e){toast('Erreur',1);}
 }
@@ -1065,7 +1071,7 @@ async function restoreSession(){
   if(s.guest){S.user={...s};return;}
   if(!sb)return;
   try{
-    const res=await sb.rpc('golf_login',{p_name:s.name,p_pin:s.pin});
+    const res=await rpcCall('golf_login',{p_name:s.name,p_pin:s.pin});
     if(!res.error)S.user={guest:false,...res.data};
   }catch(e){}
 }
@@ -1667,7 +1673,7 @@ async function finishRound(){
   for(const [idx,u] of r.units.entries()){
     const st=unitStats(u);
     const rk=rankMap.get(u)||n;
-    const tees=(teesForRank(rk,n)+(SETTINGS.bareme.birdie??5)*st.birdies)*(SETTINGS.points_multiplier||1);
+    let tees=(teesForRank(rk,n)+(SETTINGS.bareme.birdie??5)*st.birdies)*(SETTINGS.points_multiplier||1);
     const kOpt=u.members.filter(m=>m.opt).length;
     const uShares=potSharesOf(st)*kOpt;
     const potWin=potInfo&&uShares>0?Math.round(potInfo.share*uShares*100)/100:0;
@@ -1676,12 +1682,16 @@ async function finishRound(){
     else if(r.formule==='chouette')scoreLine=fmtPts(chouettePts[idx])+' pts chouette';
     else scoreLine=(PAR_TOTAL+st.brut)+' · '+fmtToPar(st.brut)+' brut / '+fmtToPar(st.net)+' net';
     let teesSaved='';
-    if(sb){
+    if(sb&&r.dbId&&u.dbId){
       for(const m of u.members){
         if(!m.memberId)continue;
         try{
-          const res=await sb.rpc('golf_award_tees',{p_member:m.memberId,p_round:r.dbId,p_delta:tees,p_reason:rk+'ᵉ/'+n+' · '+r.formule+(st.birdies?' · '+st.birdies+'🐦':'')});
-          if(!res.error){teesSaved=' ✓ crédités';if(S.user&&S.user.id===m.memberId)S.user.tees_balance=res.data;}
+          const res=await rpcCall('golf_award_tees',{p_member:m.memberId,p_round:r.dbId,p_player:u.dbId});
+          if(!res.error){
+            teesSaved=t(' ✓ crédités',' ✓ credited');
+            if(res.data.awarded)tees=res.data.awarded; /* montant officiel calculé par le serveur */
+            if(S.user&&S.user.id===m.memberId)S.user.tees_balance=res.data.balance;
+          }
         }catch(e){}
       }
     }
@@ -1885,13 +1895,16 @@ async function adminLogin(){
   if(pin.length<4){toast('PIN : 4 chiffres minimum',1);return;}
   if(!sb){toast('Pas de connexion',1);return;}
   try{
-    const r=await sb.rpc('golf_admin_login',{p_pin:pin});
+    const r=await rpcCall('golf_admin_login',{p_pin:pin});
     if(r.error)throw r.error;
     adminPin=pin;AD=null;
     SETTINGS={...SETTINGS,...r.data,bareme:{...SETTINGS.bareme,...(r.data.bareme||{})}};
     hide('admin-modal');
     show('admin');
-  }catch(e){toast((e.message||'').includes('PIN_FAUX')?'PIN incorrect':'Erreur réseau',1);}
+  }catch(e){
+    const m=(e.message||'').trim();
+    toast(m==='PIN_FAUX'?'PIN incorrect':(m==='VERROUILLE'?'Trop d\'essais — réessaie dans 15 minutes':'Erreur réseau'),1);
+  }
 }
 function adInit(){
   AD={mult:SETTINGS.points_multiplier||1,label:SETTINGS.multiplier_label||'',tv:SETTINGS.tv_enabled!==false,
@@ -1967,7 +1980,7 @@ async function adminSave(){
     pro_card:{name:AD.pro.name.trim()||'Le Pro',active:AD.pro.active,scores:AD.pro.scores.map(v=>v==null||v===''?null:+v)},
     event:{name:AD.event.name.trim(),desc:AD.event.desc.trim(),active:AD.event.active&&!!AD.event.name.trim()}};
   try{
-    const r=await sb.rpc('golf_admin_save',{p_pin:adminPin,p_patch:patch});
+    const r=await rpcCall('golf_admin_save',{p_pin:adminPin,p_patch:patch});
     if(r.error)throw r.error;
     SETTINGS={...SETTINGS,...r.data,bareme:{...SETTINGS.bareme,...(r.data.bareme||{})}};
     AD=null;
@@ -1992,7 +2005,7 @@ async function bestNetWindow(memberId,start,end){
 async function challengeFriend(fid){
   const s=store.get('session');
   try{
-    const r=await sb.rpc('golf_challenge_create',{p_me:S.user.id,p_pin:s.pin,p_friend:fid});
+    const r=await rpcCall('golf_challenge_create',{p_me:S.user.id,p_pin:s.pin,p_friend:fid});
     if(r.error)throw r.error;
     toast('Défi envoyé ⚔️ — meilleur net sur 7 jours');
     pushNotify({member_id:fid,title:'⚔️ Nouveau défi',body:S.user.name+' te défie — meilleur net sur 7 jours, '+(SETTINGS.bareme.defi??25)+' pts en jeu !'});
@@ -2005,7 +2018,7 @@ async function challengeFriend(fid){
 async function respondChallenge(id,accept,otherId){
   const s=store.get('session');
   try{
-    const r=await sb.rpc('golf_challenge_respond',{p_me:S.user.id,p_pin:s.pin,p_id:id,p_accept:accept});
+    const r=await rpcCall('golf_challenge_respond',{p_me:S.user.id,p_pin:s.pin,p_id:id,p_accept:accept});
     if(r.error)throw r.error;
     toast(accept?'Défi accepté ⚔️ — 7 jours pour signer ton meilleur net !':'Défi refusé');
     if(accept&&otherId)pushNotify({member_id:otherId,title:'⚔️ Défi accepté',body:S.user.name+' a relevé ton défi — que le meilleur net gagne !'});
