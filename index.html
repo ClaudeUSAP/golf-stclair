@@ -296,6 +296,41 @@ td.sc-x{background:#000 !important;color:var(--coral) !important;}
 .legend{display:flex;gap:10px;flex-wrap:wrap;font-size:11px;color:var(--muted);letter-spacing:.5px;font-weight:700;padding:4px 2px;}
 .legend span{display:flex;align-items:center;gap:4px;}
 .dot{width:10px;height:10px;border-radius:50%;display:inline-block;}
+
+/* ===== THÈME CLAIR (défaut) — lisible en plein soleil ===== */
+body.light{
+  --bg:#f4f5f7;--panel:#eceef2;--card:#ffffff;--card2:#eef0f4;--line:#e3e5ea;
+  --text:#14171c;--muted:#68707e;--grey:#9aa1ad;
+  --gold:#c68a12;--blue:#3b82d9;
+}
+body.light header{background:rgba(244,245,247,.94);}
+body.light .rescard,body.light .lb-row,body.light .entry-row,body.light .pcard,body.light .choice,body.light .switch,body.light .panel{box-shadow:0 1px 3px rgba(16,20,24,.05);}
+body.light .btn-volt{color:#1c2405;}
+body.light .tab.on{color:#1c2405;}
+body.light .eyebrow,body.light .home-badge,body.light .help-block b,body.light .sync-dot.ok{color:#54710e;}
+body.light .pnum,body.light table.sc td.lbl,body.light .gl-chip .rk,body.light .lb-pos,body.light .hole-head .hn,body.light .harr,body.light .er-name .dots,body.light .er-score.set{color:#54710e;}
+body.light .er-score.set{border-color:#9dc41a;}
+body.light .choice.sel{background:rgba(157,196,26,.13);color:#3f5406;}
+body.light .gl-chip.first{background:rgba(157,196,26,.13);}
+body.light .cr-badge{color:#3f5406;background:rgba(157,196,26,.13);border-color:rgba(157,196,26,.45);}
+body.light .hero-award{background:linear-gradient(135deg,#f4fbdd,#ffffff);border-color:#d5e6a2;}
+body.light .lvl-bar{background:#e7e9ee;}
+body.light .pot-banner{background:linear-gradient(120deg,#fff6dd,#fffdf6);border-color:#e8d193;color:#8a6410;}
+body.light td.sc-par{background:#e6e9ee !important;color:#14171c !important;}
+body.light .er-result.parr{background:#e6e9ee;color:#14171c;}
+body.light .modal{box-shadow:0 20px 60px rgba(0,0,0,.18);}
+body.light .modal-bg{background:rgba(20,23,28,.45);}
+body.light .toast{box-shadow:0 8px 24px rgba(0,0,0,.2);}
+body.light .btn-red{border-color:rgba(200,60,50,.4);color:#c0392b;}
+body.light .hole-head{background:linear-gradient(135deg,#ffffff,#f4f6ef);}
+
+/* ===== grain « old camera » — accueil uniquement ===== */
+#screen-home{overflow:hidden;}
+#screen-home::after{
+  content:'';position:absolute;inset:0;pointer-events:none;opacity:.55;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)' opacity='0.30'/></svg>");
+}
+#screen-home h1{text-shadow:1.5px 0 rgba(255,0,70,.22),-1.5px 0 rgba(0,110,255,.22);}
 </style>
 </head>
 <body>
@@ -321,6 +356,7 @@ td.sc-x{background:#000 !important;color:var(--coral) !important;}
       <button class="btn btn-dark" onclick="toggleMenu();show('cards')" data-i18n="groupcards">📋 Cartes du groupe</button>
       <button class="btn btn-dark" onclick="toggleMenu();show('defis')" data-i18n="challenges">⚔️ Défis</button>
       <button class="btn btn-dark" onclick="toggleMenu();show('account')" data-i18n="myaccount">👤 Mon compte & Points</button>
+      <button class="btn btn-ghost" id="theme-menu-btn" onclick="toggleTheme()">🌙 Passer en thème sombre</button>
       <button class="btn btn-ghost" onclick="toggleMenu();show('help')" data-i18n="help">? Aide</button>
       <button class="btn btn-ghost" onclick="toggleMenu();openAdmin()" data-i18n="clubspace">🔧 Espace club</button>
       <button class="btn btn-red" id="menu-logout" onclick="toggleMenu();logout()" data-i18n="logout">Se déconnecter</button>
@@ -488,6 +524,7 @@ td.sc-x{background:#000 !important;color:var(--coral) !important;}
   </div>
   <div id="chouette-bar" class="chouette-bar hidden"></div>
   <div id="defi-live" class="chouette-bar hidden" style="color:var(--coral);border-color:rgba(255,94,87,.4);"></div>
+  <div id="play-hint" style="width:100%;"></div>
   <div id="entry-list" style="display:flex;flex-direction:column;gap:12px;width:100%;"></div>
   <div class="hole-nav-row">
     <button class="btn-prev" onclick="prevHole()">← Trou <span id="prev-n"></span></button>
@@ -704,6 +741,18 @@ function applyLang(){
 }
 function setLang(l){try{localStorage.setItem('stc_lang',JSON.stringify(l));}catch(e){}location.reload();}
 function toggleLang(){setLang(LANG==='fr'?'en':'fr');}
+
+/* ================= THÈME (clair par défaut, sombre en option) ================= */
+let THEME=(function(){try{const v=localStorage.getItem('stc_theme');return v?JSON.parse(v):'light';}catch(e){return 'light';}})();
+function applyTheme(){document.body.classList.toggle('light',THEME==='light');}
+function toggleTheme(){
+  THEME=THEME==='light'?'dark':'light';
+  try{localStorage.setItem('stc_theme',JSON.stringify(THEME));}catch(e){}
+  applyTheme();
+  const b=document.getElementById('theme-menu-btn');
+  if(b)b.textContent=THEME==='light'?t('🌙 Passer en thème sombre','🌙 Switch to dark theme'):t('☀️ Passer en thème clair','☀️ Switch to light theme');
+}
+applyTheme();
 
 /* ================= UTILS ================= */
 const $=id=>document.getElementById(id);
@@ -1440,6 +1489,12 @@ function renderPlay(){
   }else $('chouette-bar').classList.add('hidden');
   const dl=$('defi-live');
   if(dl){dl.classList.toggle('hidden',!window._defiLive);dl.textContent=window._defiLive||'';}
+  /* micro-aide, affichée une seule fois (les infobulles ne marchent pas au doigt) */
+  const ph2=$('play-hint');
+  if(ph2)ph2.innerHTML=store.get('hint1')?'':`<div class="rescard" style="padding:12px 14px;font-size:14px;color:var(--muted);line-height:1.5;">
+    💡 ${t("<b>PAR</b> en un geste · <b>+ / −</b> pour ajuster · <b>✕</b> = balle ramassée · les points <b>●</b> à côté du nom = coups rendus sur ce trou. Quand tout le monde a marqué, le bouton du trou suivant s'allume.","<b>PAR</b> in one tap · <b>+ / −</b> to adjust · <b>✕</b> = ball picked up · the <b>●</b> dots by the name = strokes received on this hole. When everyone has scored, the next-hole button lights up.")}
+    <button class="btn btn-ghost btn-sm" style="margin-top:10px;" onclick="store.set('hint1',1);renderPlay()">${t('Compris ✓','Got it ✓')}</button>
+  </div>`;
 
   $('entry-list').innerHTML=r.units.map((u,i)=>{
     const sc=u.scores[r.hole];
