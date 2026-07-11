@@ -381,6 +381,20 @@ td.sc-x{background:#000 !important;color:var(--coral) !important;}
   </div>
 </div>
 
+<!-- ================= DÉFI : FORMAT + MISE ================= -->
+<div id="defi-modal" class="modal-bg hidden">
+  <div class="modal">
+    <h2>⚔️ <span data-i18n="dtitle">Défi</span></h2>
+    <p class="sub" id="defi-sub"></p>
+    <div class="choice-grid" id="defi-fmts"></div>
+    <div class="field" style="margin-top:14px;"><label data-i18n="dstake">MISE (POINTS)</label><input id="defi-stake" type="number" inputmode="numeric" min="1" max="500"></div>
+    <div class="modal-btns">
+      <button class="btn btn-volt" onclick="confirmChallenge()" data-i18n="dsend">Envoyer le défi</button>
+      <button class="btn btn-ghost" onclick="hide('defi-modal')" data-i18n="cancel">Annuler</button>
+    </div>
+  </div>
+</div>
+
 <!-- ================= ADMIN ================= -->
 <div id="admin-modal" class="modal-bg hidden">
   <div class="modal">
@@ -414,7 +428,7 @@ td.sc-x{background:#000 !important;color:var(--coral) !important;}
       <button class="btn btn-dark btn-sm" style="width:auto;padding:12px 20px;" onclick="joinGroup()" data-i18n="joinbtn">Rejoindre</button>
     </div>
   </div>
-  <button class="btn btn-volt" onclick="show('defis')"><span data-i18n="challenges">Défis</span> <span id="defis-badge" class="badge" style="background:var(--coral);color:#fff;display:none;"></span></button>
+  <div id="defi-hub" style="width:100%;"></div>
 </div>
 
 <!-- ================= DÉFIS ================= -->
@@ -473,6 +487,7 @@ td.sc-x{background:#000 !important;color:var(--coral) !important;}
     </div>
   </div>
   <div id="chouette-bar" class="chouette-bar hidden"></div>
+  <div id="defi-live" class="chouette-bar hidden" style="color:var(--coral);border-color:rgba(255,94,87,.4);"></div>
   <div id="entry-list" style="display:flex;flex-direction:column;gap:12px;width:100%;"></div>
   <div class="hole-nav-row">
     <button class="btn-prev" onclick="prevHole()">← Trou <span id="prev-n"></span></button>
@@ -483,6 +498,7 @@ td.sc-x{background:#000 !important;color:var(--coral) !important;}
   <div style="display:flex;gap:10px;width:100%;">
     <button class="btn btn-dark btn-sm" style="flex:1;" onclick="show('lb')" data-i18n="lbs">🏆 Classements</button>
     <button class="btn btn-dark btn-sm" style="flex:1;" onclick="show('cards')" data-i18n="cards">📋 Cartes</button>
+    <button class="btn btn-dark btn-sm" style="flex:1;" onclick="show('defis')" data-i18n="dbtn">⚔️ Défi</button>
   </div>
   <button class="btn btn-dark btn-sm" id="btn-finish" onclick="finishRound()" data-i18n="finish">🏁 Terminer la partie</button>
   <div class="legend">
@@ -669,7 +685,8 @@ const I18N={
  scjour:['Jour','Today'],scsaison:['Saison','Season'],scringer:['Ringer','Ringer'],
  potbanner:['🐦 Cagnotte Birdies','🐦 Birdie Pot'],
  potstake:['Mise par joueur','Stake per player'],
- defisub:['Meilleur score net sur 7 jours, carte complète. Le gagnant prend la mise en points.','Best net score over 7 days, full card. The winner takes the points stake.']
+ defisub:['Choisis ton format et ta mise — l\'adversaire a 7 jours pour répondre, puis 7 jours de jeu. Le gagnant prend la mise.','Pick your format and stake — your opponent has 7 days to respond, then 7 days to play. Winner takes the stake.'],
+ dtitle:['Défi','Challenge'],dstake:['MISE (POINTS)','STAKE (POINTS)'],dsend:['Envoyer le défi','Send challenge'],dbtn:['⚔️ Défi','⚔️ Duel']
 };
 function applyLang(){
   document.documentElement.lang=LANG;
@@ -899,12 +916,14 @@ async function renderStart(){
     <span>🔁 Rejouer comme la dernière fois</span>
     <span style="font-size:13px;font-weight:600;color:var(--muted);">${(FLBL[ls.formule]||ls.formule)} · ${ls.players.map(p=>initials(p.name||'?')).join(' · ')}${ls.birdiePot?' · 🐦 5€':''}</span>
   </button>`:'';
-  const badge=$('defis-badge');
-  badge.style.display='none';
+  const hub=$('defi-hub');
+  if(hub)hub.innerHTML=`<button class="btn btn-ghost btn-sm" style="width:100%;" onclick="show('defis')">${t('Lancer ou suivre un défi','Start or follow a challenge')}</button>`;
   if(sb&&S.user&&!S.user.guest){
     try{
       const r=await sb.from('golf_challenges').select('id').eq('challenged',S.user.id).eq('status','pending');
-      if(!r.error&&r.data.length){badge.textContent=r.data.length;badge.style.display='inline-block';}
+      if(!r.error&&r.data.length&&hub){
+        hub.innerHTML=`<button class="btn" style="width:100%;background:var(--coral);color:#fff;box-shadow:0 6px 22px rgba(255,94,87,.3);" onclick="show('defis')">⚔️ ${r.data.length} ${t('défi'+(r.data.length>1?'s':'')+' t\'attend'+(r.data.length>1?'ent':''),'challenge'+(r.data.length>1?'s':'')+' waiting')} — ${t('Répondre','Respond')}</button>`;
+      }
     }catch(e){}
   }
 }
@@ -932,7 +951,8 @@ async function joinGroup(){
     persistRound();
     startRoundSync();
     show('play');
-    toast('Groupe rejoint 👥 — synchronisé');
+    loadMyDefis();
+    toast(t('Groupe rejoint 👥 — synchronisé','Group joined 👥 — synced'));
   }catch(e){toast('Erreur réseau',1);}
 }
 
@@ -982,17 +1002,16 @@ async function renderDefis(){
       const ms=await sb.from('golf_members').select('id,name,hcp_index').in('id',ids);
       if(!ms.error)ms.data.forEach(m=>names[m.id]=m);
     }
-    /* règlement auto des défis expirés */
-    for(const c of challenges.filter(c=>c.status==='active'&&c.end_date<todayISO())){
-      const [cs,ds]=await Promise.all([bestNetWindow(c.challenger,c.start_date,c.end_date),bestNetWindow(c.challenged,c.start_date,c.end_date)]);
-      try{
-        const r=await rpcCall('golf_challenge_settle',{p_id:c.id,p_cs:cs,p_ds:ds});
-        if(!r.error){c.status='done';c.winner=r.data.winner;}
-      }catch(e){}
-    }
+    /* règlement auto des défis expirés + statut courant (selon le format) */
     for(const c of challenges.filter(c=>c.status==='active')){
-      c._cs=await bestNetWindow(c.challenger,c.start_date,todayISO());
-      c._ds=await bestNetWindow(c.challenged,c.start_date,todayISO());
+      const st=await challengeStanding(c);
+      c._aDisp=st.aDisp;c._bDisp=st.bDisp;
+      if(c.end_date<todayISO()){
+        try{
+          const r=await rpcCall('golf_challenge_settle',{p_id:c.id,p_cs:st.cs,p_ds:st.ds});
+          if(!r.error){c.status='done';c.winner=r.data.winner;}
+        }catch(e){}
+      }
     }
     let html='';
     const pendIn=challenges.filter(c=>c.status==='pending'&&c.challenged===S.user.id);
@@ -1000,22 +1019,24 @@ async function renderDefis(){
     const active=challenges.filter(c=>c.status==='active');
     const done=challenges.filter(c=>c.status==='done').slice(0,5);
     if(pendIn.length){
-      html+='<div class="rescard"><div style="font-weight:800;font-size:17px;margin-bottom:6px;">📩 On te défie !</div>'+
-        pendIn.map(c=>`<div class="resline"><span>⚔️ <b style="font-size:16px;">${(names[c.challenger]||{}).name||'?'}</b> <small style="color:var(--gold);">${c.stake} pts en jeu</small></span>
+      html+='<div class="rescard"><div style="font-weight:800;font-size:17px;margin-bottom:6px;">📩 '+t('On te défie !','You are challenged!')+'</div>'+
+        pendIn.map(c=>{
+          const exp=new Date(new Date(c.created_at).getTime()+7*864e5).toLocaleDateString('fr-FR',{day:'numeric',month:'short'});
+          return `<div class="resline"><span>⚔️ <b style="font-size:16px;">${(names[c.challenger]||{}).name||'?'}</b><small style="display:block;color:var(--muted);">${dfmt(c.fmt)} · <span style="color:var(--gold);">${c.stake} pts</span> · ${t('réponds avant le ','reply by ')}${exp}</small></span>
           <span style="display:flex;gap:6px;">
-            <button class="btn btn-volt btn-sm" style="width:auto;padding:8px 14px;" onclick="respondChallenge('${c.id}',true,'${c.challenger}')">✓ Relever</button>
+            <button class="btn btn-volt btn-sm" style="width:auto;padding:8px 14px;" onclick="respondChallenge('${c.id}',true,'${c.challenger}')">✓</button>
             <button class="btn btn-red btn-sm" style="width:auto;padding:8px 14px;" onclick="respondChallenge('${c.id}',false,'${c.challenger}')">✕</button>
-          </span></div>`).join('')+'</div>';
+          </span></div>`;
+        }).join('')+'</div>';
     }
     if(active.length){
-      html+='<div class="rescard"><div style="font-weight:800;font-size:17px;margin-bottom:6px;">🔥 En cours</div>'+
+      html+='<div class="rescard"><div style="font-weight:800;font-size:17px;margin-bottom:6px;">🔥 '+t('En cours','Live')+'</div>'+
         active.map(c=>{
           const meCh=c.challenger===S.user.id;
           const other=(names[meCh?c.challenged:c.challenger]||{}).name||'?';
-          const mine=meCh?c._cs:c._ds, theirs=meCh?c._ds:c._cs;
           const fin=new Date(c.end_date+'T12:00:00').toLocaleDateString('fr-FR',{day:'numeric',month:'short'});
-          return `<div class="resline"><span>vs <b style="font-size:16px;">${other}</b><small style="display:block;color:var(--muted);">jusqu'au ${fin} · ${c.stake} pts</small></span>
-            <b class="num">${mine==null?'—':fmtToPar(mine)} <small style="color:var(--muted);font-weight:600;">/ ${theirs==null?'—':fmtToPar(theirs)}</small></b></div>`;
+          return `<div class="resline"><span>vs <b style="font-size:16px;">${other}</b><small style="display:block;color:var(--muted);">${dfmt(c.fmt)} · ${t("jusqu'au ",'until ')}${fin} · ${c.stake} pts</small></span>
+            <b class="num">${meCh?c._aDisp:c._bDisp} <small style="color:var(--muted);font-weight:600;">/ ${meCh?c._bDisp:c._aDisp}</small></b></div>`;
         }).join('')+'</div>';
     }
     /* défier un ami */
@@ -1025,7 +1046,7 @@ async function renderDefis(){
         const m=names[fid]||{name:'?'};
         const b=busy.has(fid);
         return `<div class="resline"><span>💚 ${m.name} <small style="color:var(--muted);">idx ${m.hcp_index??''}</small></span>
-          ${b?'<b style="color:var(--muted);font-size:13px;">défi en cours</b>':`<button class="btn btn-dark btn-sm" style="width:auto;padding:9px 16px;" onclick="challengeFriend('${fid}')">⚔️ Défier</button>`}</div>`;
+          ${b?'<b style="color:var(--muted);font-size:13px;">'+t('défi en cours','challenge running')+'</b>':`<button class="btn btn-dark btn-sm" style="width:auto;padding:9px 16px;" onclick="challengeFriend('${fid}','${(m.name||'').replace(/'/g,'&#39;')}')">⚔️ ${t('Défier','Challenge')}</button>`}</div>`;
       }).join(''):'<div class="pd-empty">Ajoute des amis depuis Mon compte pour les défier.</div>')+
       (pendOut.length?pendOut.map(c=>`<div class="resline"><span>⚔️ ${(names[c.challenged]||{}).name||'?'}</span><b style="color:var(--muted);font-size:13px;">en attente…</b></div>`).join(''):'')+'</div>';
     if(done.length){
@@ -1316,7 +1337,8 @@ async function startRound(){
   S.round={formule:S.setup.formule,units,hole:0,birdiePot:S.setup.birdiePot,potAmount,dbId:null,online:false,date:todayISO(),code:joinCode};
   persistRound();
   show('play');
-  toast('Bonne partie ! ⛳');
+  loadMyDefis();
+  toast(t('Bonne partie ! ⛳','Play well! ⛳'));
   /* enregistrement DB en arrière-plan */
   if(sb){
     try{
@@ -1416,6 +1438,8 @@ function renderPlay(){
     $('chouette-bar').classList.remove('hidden');
     $('chouette-bar').innerHTML='🦉 LA CHOUETTE · '+r.units.map((u,i)=>`${u.ini} <span class="num">${fmtPts(pts[i])}</span>`).join(' &nbsp;·&nbsp; ');
   }else $('chouette-bar').classList.add('hidden');
+  const dl=$('defi-live');
+  if(dl){dl.classList.toggle('hidden',!window._defiLive);dl.textContent=window._defiLive||'';}
 
   $('entry-list').innerHTML=r.units.map((u,i)=>{
     const sc=u.scores[r.hole];
@@ -2078,29 +2102,106 @@ async function adminSave(){
 }
 
 /* ================= DÉFIS AMIS ================= */
-async function bestNetWindow(memberId,start,end){
+const DFMT={stroke:['Stroke play','Stroke play'],net:['Stroke play','Stroke play'],match:['Match play','Match play'],stab_brut:['Stableford brut','Stableford gross'],stab_net:['Stableford net','Stableford net']};
+function dfmt(f){return (DFMT[f]||DFMT.stroke)[LANG==='en'?1:0];}
+async function windowCards(memberId,start,end){
   try{
     const r=await sb.from('golf_round_players').select('scores,coups_rendus,golf_rounds!inner(round_date)')
       .eq('member_id',memberId).gte('golf_rounds.round_date',start).lte('golf_rounds.round_date',end);
-    if(r.error)return null;
-    let best=null;
-    r.data.forEach(rp=>{
-      const st=unitStats({ph:rp.coups_rendus||0,scores:Array.isArray(rp.scores)?rp.scores:[]});
-      if(st.thru===18&&(best==null||st.net<best))best=st.net;
-    });
-    return best;
-  }catch(e){return null;}
+    if(r.error)return [];
+    return r.data.map(rp=>({scores:Array.isArray(rp.scores)?rp.scores:[],ph:rp.coups_rendus||0}))
+      .filter(c=>unitStats({ph:c.ph,scores:c.scores}).thru===18);
+  }catch(e){return [];}
 }
-async function challengeFriend(fid){
-  const s=store.get('session');
+function bestOf(cards,fmt){ /* val orienté « plus petit = meilleur » */
+  let best=null;
+  cards.forEach(c=>{
+    const st=unitStats({ph:c.ph,scores:c.scores});
+    let v,disp;
+    if(fmt==='stab_brut'){v=-st.ptsB;disp=st.ptsB+' pts';}
+    else if(fmt==='stab_net'){v=-st.ptsN;disp=st.ptsN+' pts';}
+    else{v=st.net;disp=fmtToPar(st.net);}
+    if(best==null||v<best.val)best={val:v,disp,card:c};
+  });
+  return best;
+}
+function holeNetOf(c,i){
+  const sc=c.scores[i];
+  if(sc==null)return null;
+  const h=HOLES[i],rcv=rcvHole(c.ph,h.si);
+  return (sc==='X'?h.par+2+rcv:sc)-rcv;
+}
+function matchResult(cA,cB){
+  let a=0,b=0;
+  for(let i=0;i<18;i++){
+    const na=holeNetOf(cA,i),nb=holeNetOf(cB,i);
+    if(na==null||nb==null)continue;
+    if(na<nb)a++;else if(nb<na)b++;
+  }
+  return {a,b};
+}
+async function challengeStanding(c){ /* cs/ds orientés lower-better, aDisp/bDisp = challenger/challenged */
+  const end=c.end_date&&c.end_date<todayISO()?c.end_date:todayISO();
+  const [ca,cb]=await Promise.all([windowCards(c.challenger,c.start_date,end),windowCards(c.challenged,c.start_date,end)]);
+  const fmt=c.fmt||'stroke';
+  if(fmt==='match'){
+    const ba=bestOf(ca,'stroke'),bb=bestOf(cb,'stroke');
+    if(ba&&bb){
+      const m=matchResult(ba.card,bb.card);
+      return {cs:-m.a,ds:-m.b,aDisp:m.a+' '+t('trous','holes'),bDisp:m.b+' '+t('trous','holes')};
+    }
+    return {cs:ba?0:null,ds:bb?0:null,aDisp:ba?t('carte prête','card in'):'—',bDisp:bb?t('carte prête','card in'):'—'};
+  }
+  const ba=bestOf(ca,fmt),bb=bestOf(cb,fmt);
+  return {cs:ba?ba.val:null,ds:bb?bb.val:null,aDisp:ba?ba.disp:'—',bDisp:bb?bb.disp:'—'};
+}
+/* statut live des défis pendant la partie */
+async function loadMyDefis(){
+  window._defiLive='';
+  if(!sb||!S.user||S.user.guest)return;
   try{
-    const r=await rpcCall('golf_challenge_create',{p_me:S.user.id,p_pin:s.pin,p_friend:fid});
+    const r=await sb.from('golf_challenges').select('*').or(`challenger.eq.${S.user.id},challenged.eq.${S.user.id}`).eq('status','active');
+    if(r.error||!r.data.length){if(!$('screen-play').classList.contains('hidden'))renderPlay();return;}
+    const names={};
+    const ids=[...new Set(r.data.flatMap(c=>[c.challenger,c.challenged]))].filter(x=>x!==S.user.id);
+    if(ids.length){const ms=await sb.from('golf_members').select('id,name').in('id',ids);if(!ms.error)ms.data.forEach(m=>names[m.id]=m.name);}
+    const parts=[];
+    for(const c of r.data.slice(0,2)){
+      const st=await challengeStanding(c);
+      const meCh=c.challenger===S.user.id;
+      parts.push('⚔️ '+(names[meCh?c.challenged:c.challenger]||'?')+' · '+dfmt(c.fmt)+' · '+(meCh?st.aDisp:st.bDisp)+' / '+(meCh?st.bDisp:st.aDisp));
+    }
+    window._defiLive=parts.join('  ·  ');
+    if(!$('screen-play').classList.contains('hidden'))renderPlay();
+  }catch(e){}
+}
+let defiTarget=null,defiFmt='stroke';
+function challengeFriend(fid,fname){
+  defiTarget={id:fid,name:fname||''};
+  defiFmt='stroke';
+  $('defi-sub').textContent=t('Contre ','Against ')+(fname||'?')+t(' · meilleur résultat sur 7 jours, cartes complètes',' · best result over 7 days, full cards');
+  $('defi-stake').value=SETTINGS.bareme.defi??25;
+  renderDefiFmts();
+  unhide('defi-modal');
+}
+function renderDefiFmts(){
+  const F=[['stroke','Stroke play'],['match','Match play'],['stab_brut',t('Stableford brut','Stableford gross')],['stab_net','Stableford net']];
+  $('defi-fmts').innerHTML=F.map(([k,lab])=>
+    `<button class="choice ${defiFmt===k?'sel':''}" style="padding:14px 8px;font-size:15px;" onclick="defiFmt='${k}';renderDefiFmts()">${lab}</button>`).join('');
+}
+async function confirmChallenge(){
+  if(!defiTarget)return;
+  const s=store.get('session');
+  const stake=Math.max(1,Math.min(500,parseInt($('defi-stake').value)||(SETTINGS.bareme.defi??25)));
+  try{
+    const r=await rpcCall('golf_challenge_create',{p_me:S.user.id,p_pin:s.pin,p_friend:defiTarget.id,p_stake:stake,p_fmt:defiFmt});
     if(r.error)throw r.error;
-    toast('Défi envoyé ⚔️ — meilleur net sur 7 jours');
-    pushNotify({member_id:fid,title:'⚔️ Nouveau défi',body:S.user.name+' te défie — meilleur net sur 7 jours, '+(SETTINGS.bareme.defi??25)+' pts en jeu !'});
+    hide('defi-modal');
+    toast(t('Défi envoyé ⚔️','Challenge sent ⚔️'));
+    pushNotify({member_id:defiTarget.id,title:t('⚔️ Nouveau défi','⚔️ New challenge'),body:S.user.name+' · '+dfmt(defiFmt)+' · '+stake+' pts'});
     refreshChallengeViews();
   }catch(e){
-    const msg={DEJA_EN_COURS:'Défi déjà en cours avec ce joueur',PAS_AMIS:'Vous devez être amis',PIN_FAUX:'Reconnecte-toi'}[(e.message||'').trim()]||'Erreur';
+    const msg={DEJA_EN_COURS:t('Défi déjà en cours avec ce joueur','Challenge already running'),PAS_AMIS:t('Vous devez être amis','You must be friends'),PIN_FAUX:t('Reconnecte-toi','Sign in again'),VERROUILLE:t('Trop d\'essais — 15 min','Too many attempts — 15 min')}[(e.message||'').trim()]||t('Erreur','Error');
     toast(msg,1);
   }
 }
@@ -2109,10 +2210,13 @@ async function respondChallenge(id,accept,otherId){
   try{
     const r=await rpcCall('golf_challenge_respond',{p_me:S.user.id,p_pin:s.pin,p_id:id,p_accept:accept});
     if(r.error)throw r.error;
-    toast(accept?'Défi accepté ⚔️ — 7 jours pour signer ton meilleur net !':'Défi refusé');
-    if(accept&&otherId)pushNotify({member_id:otherId,title:'⚔️ Défi accepté',body:S.user.name+' a relevé ton défi — que le meilleur net gagne !'});
+    toast(accept?t('Défi accepté ⚔️ — 7 jours pour jouer !','Challenge accepted ⚔️ — 7 days to play!'):t('Défi refusé','Challenge declined'));
+    if(accept&&otherId)pushNotify({member_id:otherId,title:t('⚔️ Défi accepté','⚔️ Challenge accepted'),body:S.user.name+' '+t('a relevé ton défi !','accepted your challenge!')});
     refreshChallengeViews();
-  }catch(e){toast('Erreur',1);}
+  }catch(e){
+    toast((e.message||'')==='EXPIRE'?t('Défi expiré (plus de 7 jours)','Challenge expired (over 7 days)'):t('Erreur','Error'),1);
+    refreshChallengeViews();
+  }
 }
 /* ---- Niveaux : XP = tees gagnés à vie (le solde dépensé ne baisse pas le niveau) ---- */
 function levelOf(xp){
@@ -2311,7 +2415,7 @@ async function renderAccount(){
       const m=frMembers[fid]||{name:'?'};
       fh+=`<div class="resline"><span>💚 ${m.name} <small style="color:var(--muted);">idx ${m.hcp_index??''}</small></span>
         <span style="display:flex;gap:12px;align-items:center;">
-          <button style="font-size:17px;" title="Défier — meilleur net sur 7 jours" onclick="challengeFriend('${fid}')">⚔️</button>
+          <button style="font-size:17px;" title="${t('Défier','Challenge')}" onclick="challengeFriend('${fid}','${(m.name||'').replace(/'/g,'&#39;')}')">⚔️</button>
           <button style="color:var(--muted);font-size:15px;" onclick="removeFriend('${fid}')">✕</button>
         </span></div>`;
     });
@@ -2390,7 +2494,7 @@ async function loadCourse(){
   const saved=store.get('round');
   if(saved&&saved.date===todayISO()&&saved.units&&saved.units.length){
     S.round=saved;
-    if(S.user){loadFriends();loadMyLeagues();}
+    if(S.user){loadFriends();loadMyLeagues();loadMyDefis();}
     if(S.round.dbId)startRoundSync();
     show('play');
     toast(t('Partie en cours reprise ⛳','Round resumed ⛳'));
