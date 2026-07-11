@@ -324,13 +324,23 @@ body.light .toast{box-shadow:0 8px 24px rgba(0,0,0,.2);}
 body.light .btn-red{border-color:rgba(200,60,50,.4);color:#c0392b;}
 body.light .hole-head{background:linear-gradient(135deg,#ffffff,#f4f6ef);}
 
-/* ===== grain « old camera » — accueil uniquement ===== */
-#screen-home{overflow:hidden;}
-#screen-home::after{
-  content:'';position:absolute;inset:0;pointer-events:none;opacity:.55;
-  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)' opacity='0.30'/></svg>");
-}
-#screen-home h1{text-shadow:1.5px 0 rgba(255,0,70,.22),-1.5px 0 rgba(0,110,255,.22);}
+/* ===== signature de marque : la rangée de 18 trous ===== */
+.brand-strip{display:flex;gap:5px;width:100%;max-width:480px;margin:14px 0 4px;}
+.bcell{flex:1;aspect-ratio:1;border-radius:7px;background:var(--card2);border:1px solid var(--line);animation:bwave 5.6s ease-in-out infinite;}
+.bcell.b{background:var(--coral);border-color:var(--coral);border-radius:50%;}
+.bcell.e{background:var(--gold);border-color:var(--gold);border-radius:50%;}
+.bcell:nth-child(1){animation-delay:0s}.bcell:nth-child(2){animation-delay:.12s}.bcell:nth-child(3){animation-delay:.24s}
+.bcell:nth-child(4){animation-delay:.36s}.bcell:nth-child(5){animation-delay:.48s}.bcell:nth-child(6){animation-delay:.6s}
+.bcell:nth-child(7){animation-delay:.72s}.bcell:nth-child(8){animation-delay:.84s}.bcell:nth-child(9){animation-delay:.96s}
+.bcell:nth-child(10){animation-delay:1.08s}.bcell:nth-child(11){animation-delay:1.2s}.bcell:nth-child(12){animation-delay:1.32s}
+.bcell:nth-child(13){animation-delay:1.44s}.bcell:nth-child(14){animation-delay:1.56s}.bcell:nth-child(15){animation-delay:1.68s}
+.bcell:nth-child(16){animation-delay:1.8s}.bcell:nth-child(17){animation-delay:1.92s}.bcell:nth-child(18){animation-delay:2.04s}
+@keyframes bwave{0%,100%{transform:translateY(0)}4%{transform:translateY(-7px)}9%{transform:translateY(0)}}
+h1.mega{font-family:'Space Grotesk';font-weight:700;font-size:clamp(42px,12vw,60px);line-height:1.04;letter-spacing:-1.5px;margin:6px 0 4px;}
+h1.mega .hl{background:var(--volt);color:#1c2405;padding:0 12px;border-radius:14px;display:inline-block;}
+.club-row{display:flex;align-items:center;gap:10px;justify-content:center;}
+.club-row svg{border-radius:10px;}
+.club-row span{font-weight:900;letter-spacing:2.5px;font-size:12px;color:var(--muted);}
 </style>
 </head>
 <body>
@@ -368,18 +378,16 @@ body.light .hole-head{background:linear-gradient(135deg,#ffffff,#f4f6ef);}
 <!-- ================= HOME ================= -->
 <div id="screen-home" class="screen center" style="position:relative;">
   <button class="hdr-btn" id="lang-btn-home" onclick="toggleLang()" style="position:absolute;top:16px;right:16px;font-size:13px;font-weight:900;letter-spacing:1px;">EN</button>
-  <div class="logo-hero">
-    <svg width="210" height="105" viewBox="0 0 220 110">
-      <text x="0" y="52" font-family="Arial Black,Arial" font-weight="900" font-size="56" fill="#fff" letter-spacing="2">G<tspan fill="#8dc63f">O</tspan>LF</text>
-      <rect x="168" y="10" width="46" height="46" fill="none" stroke="#fff" stroke-width="5"/>
-      <circle cx="191" cy="33" r="13" fill="#fff"/>
-      <path d="M185 56 l12 0 l-6 10 z" fill="#8dc63f"/>
-      <text x="0" y="88" font-family="Arial" font-size="21" fill="#fff">Domaine de St Clair</text>
-      <line x1="0" y1="98" x2="214" y2="98" stroke="#8dc63f" stroke-width="3"/>
-    </svg>
+  <div class="club-row">
+    <svg viewBox="0 0 64 64" width="38"><rect width="64" height="64" rx="12" fill="#111"/><text x="8" y="34" font-family="Arial Black" font-weight="900" font-size="22" fill="#fff">G<tspan fill="#8dc63f">O</tspan></text><text x="8" y="52" font-family="Arial Black" font-weight="900" font-size="22" fill="#fff">LF</text></svg>
+    <span>DOMAINE DE ST CLAIR · ANNONAY</span>
   </div>
-  <div class="home-badge"><span class="live-dot"></span> <span data-i18n="badge">SCORING LIVE · PARCOURS 18 TROUS</span></div>
-  <h1 data-i18n="h1">Ta carte de score,<br>en direct.</h1>
+  <div class="brand-strip">
+    <div class="bcell"></div><div class="bcell"></div><div class="bcell b"></div><div class="bcell"></div><div class="bcell"></div><div class="bcell e"></div>
+    <div class="bcell"></div><div class="bcell"></div><div class="bcell b"></div><div class="bcell"></div><div class="bcell"></div><div class="bcell"></div>
+    <div class="bcell b"></div><div class="bcell"></div><div class="bcell"></div><div class="bcell"></div><div class="bcell"></div><div class="bcell"></div>
+  </div>
+  <h1 class="mega" data-i18n="h1">Ta carte.<br><span class="hl">En direct.</span></h1>
   <p class="sub" data-i18n="hsub">Scores du groupe, classement live du club,<br>points à gagner et Prime aux Birdies. 🏅</p>
   <div style="width:100%;display:flex;flex-direction:column;gap:12px;margin-top:6px;">
     <button class="btn btn-volt" onclick="guestStart()" data-i18n="guest">Jouer — sans compte</button>
@@ -692,7 +700,7 @@ let LANG=(function(){try{const v=localStorage.getItem('stc_lang');return v?JSON.
 function t(fr,en){return LANG==='en'?en:fr;}
 const I18N={
  badge:['SCORING LIVE · PARCOURS 18 TROUS','LIVE SCORING · 18-HOLE COURSE'],
- h1:['Ta carte de score,<br>en direct.','Your scorecard,<br>live.'],
+ h1:['Ta carte.<br><span class="hl">En direct.</span>','Your card.<br><span class="hl">Live.</span>'],
  hsub:['Scores du groupe, classement live du club,<br>points à gagner et Prime aux Birdies. 🏅','Group scoring, live club leaderboard,<br>points to earn and the Birdie Pot. 🏅'],
  member:["J'ai un compte (nom + PIN)",'I have an account (name + PIN)'],
  guest:['Jouer — sans compte','Play — no account'],
