@@ -1234,6 +1234,33 @@ async function loadFriends(){
     if(!r.error)r.data.forEach(f=>FRIENDS.add(f.requester===S.user.id?f.addressee:f.requester));
   }catch(e){}
 }
+let friendSuggTimer=null;
+function suggestFriends(term){
+  clearTimeout(friendSuggTimer);
+  const box=$('friend-sugg');
+  if(!box)return;
+  term=(term||'').trim();
+  if(term.length<2){box.innerHTML='';return;}
+  friendSuggTimer=setTimeout(async()=>{
+    try{
+      const r=await sb.from('golf_members').select('id,name,hcp_index,club')
+        .ilike('name','%'+term.replace(/[%_]/g,'')+'%').neq('id',S.user.id).limit(6);
+      if(r.error)return;
+      const skip=new Set([...FRIENDS]);
+      const rows=r.data.filter(m=>!skip.has(m.id));
+      box.innerHTML=rows.length?rows.map(m=>
+        `<div class="resline" style="cursor:pointer;" onclick="pickFriend('${m.name.replace(/'/g,'&#39;')}')">
+          <span>👤 <b style="font-size:16px;">${m.name}</b> <small style="color:var(--muted);">idx ${m.hcp_index??''}</small></span>
+          <b style="color:var(--volt-d,#54710e);">+</b></div>`).join('')
+        :`<div class="pd-empty" style="padding:8px 0;">${t('Aucun membre trouvé — il doit d\'abord activer son compte (accueil → Membre).','No member found — they must activate their account first.')}</div>`;
+    }catch(e){}
+  },250);
+}
+function pickFriend(name){
+  $('friend-name').value=name;
+  $('friend-sugg').innerHTML='';
+  addFriend();
+}
 async function addFriend(){
   const name=$('friend-name').value.trim();
   if(!name){toast('Entre le nom du membre',1);return;}
@@ -1250,7 +1277,7 @@ async function addFriend(){
     }catch(e){}
     await loadFriends();renderAccount();
   }catch(e){
-    const msg={INCONNU:'Aucun membre à ce nom',DEJA_AMIS:'Vous êtes déjà amis',DEJA_DEMANDE:'Demande déjà envoyée',TOI_MEME:'C\'est toi !',PIN_FAUX:'Reconnecte-toi'}[(e.message||'').trim()]||'Erreur réseau';
+    const msg={INCONNU:t('Aucun membre à ce nom — choisis dans la liste qui apparaît en tapant','No member with this name — pick from the list that appears as you type'),DEJA_AMIS:'Vous êtes déjà amis',DEJA_DEMANDE:'Demande déjà envoyée',TOI_MEME:'C\'est toi !',PIN_FAUX:'Reconnecte-toi'}[(e.message||'').trim()]||'Erreur réseau';
     toast(msg,1);
   }
 }
@@ -2638,9 +2665,10 @@ async function renderAccount(){
     const accepted=frRows.filter(f=>f.status==='accepted');
     let fh='<div class="rescard"><div style="font-weight:800;font-size:17px;margin-bottom:10px;">👥 Mes amis</div>';
     fh+=`<div style="display:flex;gap:8px;margin-bottom:10px;">
-      <input id="friend-name" placeholder="Nom du membre" maxlength="30" style="flex:1;background:var(--panel);border:2px solid var(--line);border-radius:12px;color:var(--text);font-weight:700;padding:12px;font-size:16px;min-width:0;">
+      <input id="friend-name" placeholder="${t('Tape son nom…','Type their name…')}" maxlength="30" autocomplete="off" oninput="suggestFriends(this.value)" style="flex:1;background:var(--panel);border:2px solid var(--line);border-radius:12px;color:var(--text);font-weight:700;padding:12px;font-size:16px;min-width:0;">
       <button class="btn btn-volt btn-sm" style="width:auto;padding:12px 18px;" onclick="addFriend()">+ Ajouter</button>
-    </div>`;
+    </div>
+    <div id="friend-sugg"></div>`;
     pendingIn.forEach(f=>{
       const m=frMembers[f.requester]||{name:'?'};
       fh+=`<div class="resline"><span>📩 <b style="font-size:16px;">${m.name}</b> veut te suivre</span>
