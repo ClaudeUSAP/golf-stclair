@@ -2774,7 +2774,7 @@ async function loadCoursesList(){
   if(!sb)return;
   try{
     const r=await sb.from('golf_courses').select('id,name,par').order('name');
-    if(!r.error)COURSES=r.data;
+    if(!r.error)COURSES=r.data.sort((a,b)=>(a.id==='st-clair'?-1:b.id==='st-clair'?1:a.id==='exterieur'?1:b.id==='exterieur'?-1:a.name.localeCompare(b.name)));
   }catch(e){}
 }
 async function setCourse(id){
