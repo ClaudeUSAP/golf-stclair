@@ -495,6 +495,7 @@ h1.mega .hl{background:var(--volt);color:#1c2405;padding:0 12px;border-radius:14
     </div>
   </div>
   <div id="defi-hub" style="width:100%;"></div>
+  <div id="freq-slot" style="width:100%;"></div>
   <div id="friends-slot" style="width:100%;"></div>
   <div id="feed-slot" style="width:100%;"></div>
   <button class="btn btn-ghost btn-sm" onclick="show('home')">🔄 <span data-i18n="switchp">Changer de joueur</span></button>
@@ -850,7 +851,7 @@ function guestStart(){
 function toggleMenu(){$('menu').classList.toggle('hidden');}
 function confirmQuit(){
   if(!S.round){show('home');return;}
-  if(confirm('Quitter la partie en cours ?')){stopRoundSync();S.round=null;store.set('round',null);show('home');}
+  if(confirm(t('Quitter la partie en cours ?','Quit the current round?'))){stopRoundSync();S.round=null;store.set('round',null);show('home');}
 }
 function logout(){S.user=null;store.set('session',null);S.round=null;show('home');toast('À bientôt !');}
 function updateHdrUser(){
@@ -1033,8 +1034,37 @@ async function renderStart(){
       }
     }catch(e){}
   }
+  renderFriendRequests();
   renderFriendsLive();
   renderFeed();
+}
+
+/* ================= DEMANDES D'AMI ENTRANTES (accueil) ================= */
+async function renderFriendRequests(){
+  const slot=$('freq-slot');
+  if(!slot)return;
+  if(!sb||!S.user||S.user.guest){slot.innerHTML='';return;}
+  try{
+    const r=await sb.from('golf_friends').select('id,requester').eq('addressee',S.user.id).eq('status','pending');
+    if(r.error||!r.data.length){slot.innerHTML='';return;}
+    const ids=r.data.map(x=>x.requester);
+    const names={};
+    try{const m=await sb.from('golf_members').select('id,name,hcp_index').in('id',ids);if(!m.error)m.data.forEach(x=>names[x.id]=x);}catch(e){}
+    slot.innerHTML=`<div class="rescard" style="text-align:left;border:1px solid rgba(255,201,77,.55);background:linear-gradient(120deg,rgba(255,201,77,.10),transparent);">
+      <div style="font-weight:800;font-size:16px;margin-bottom:8px;">👋 ${t('Demandes d\'ami','Friend requests')}</div>
+      ${r.data.map(f=>{const nm=names[f.requester]||{name:'?'};
+        return `<div class="resline"><span>📩 <b style="font-size:16px;">${nm.name}</b> <small style="display:block;color:var(--muted);">${t('veut te suivre','wants to follow you')}${nm.hcp_index!=null?' · idx '+nm.hcp_index:''}</small></span>
+          <span style="display:flex;gap:6px;">
+            <button class="btn btn-volt btn-sm" style="width:auto;padding:8px 14px;" onclick="respondFriendHome('${f.id}',true,'${f.requester}')">✓ ${t('Accepter','Accept')}</button>
+            <button class="btn btn-red btn-sm" style="width:auto;padding:8px 12px;" onclick="respondFriendHome('${f.id}',false,'${f.requester}')">✕</button>
+          </span></div>`;
+      }).join('')}
+    </div>`;
+  }catch(e){}
+}
+async function respondFriendHome(id,accept,rid){
+  await respondFriend(id,accept,rid);
+  renderFriendRequests();renderFriendsLive();
 }
 
 /* ================= AMIS EN JEU AUJOURD'HUI ================= */
@@ -1465,7 +1495,7 @@ async function respondFriend(id,accept,requesterId){
   }catch(e){toast('Erreur',1);}
 }
 async function removeFriend(fid){
-  if(!confirm('Retirer cet ami ?'))return;
+  if(!confirm(t('Retirer cet ami ?','Remove this friend?')))return;
   const s=store.get('session');
   try{
     await rpcCall('golf_friend_remove',{p_me:S.user.id,p_pin:s.pin,p_friend:fid});
@@ -1733,7 +1763,8 @@ async function startRound(){
       persistRound();
       startRoundSync();
       setSync('ok');
-    }catch(e){setSync('err');toast('Mode hors-ligne — scores locaux',1);}
+      if(S.round&&S.round.dbId)renderPlay(); /* réaffiche le code de groupe dès le trou 1 (online devient true après l'insert async) */
+    }catch(e){setSync('err');toast(t('Mode hors-ligne — scores locaux','Offline — scores saved locally'),1);}
   }else setSync('err');
 }
 /* persistance : la partie survit au rechargement / verrouillage du téléphone */
@@ -2178,7 +2209,7 @@ function teesForWins(u,st,field){
 async function finishRound(){
   const r=S.round;
   const incomplete=r.units.some(u=>u.scores.some(s=>s==null));
-  if(incomplete&&!confirm('Des trous ne sont pas remplis (comptés ✕). Terminer quand même ?'))return;
+  if(incomplete&&!confirm(t('Des trous ne sont pas remplis (comptés ✕). Terminer quand même ?','Some holes are empty (counted as ✕). Finish anyway?')))return;
   stopRoundSync();
   r.units.forEach(u=>{for(let i=0;i<18;i++)if(u.scores[i]==null)u.scores[i]='X';});
   await flushSaves();
