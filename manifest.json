@@ -1,7 +1,7 @@
 {
-  "name": "St Clair Live Scoring",
-  "short_name": "St Clair",
-  "description": "Carte de score digitale du Golf du Domaine de St Clair — livescoring, classements, points et Prime aux Birdies.",
+  "name": "Live Scoring",
+  "short_name": "Live Scoring",
+  "description": "Carte de score digitale — livescoring, classements, points et Prime aux Birdies.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

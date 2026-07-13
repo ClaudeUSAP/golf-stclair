@@ -3,14 +3,14 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>St Clair Live Scoring</title>
+<title>Live Scoring</title>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#0c1017">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="St Clair">
+<meta name="apple-mobile-web-app-title" content="Live Scoring">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Archivo:wght@400;600;700;900&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
@@ -136,6 +136,8 @@ table.sc td.lbl{position:sticky;left:0;background:var(--bg);color:var(--volt);fo
 table.sc td.cur{box-shadow:inset 0 0 0 2px var(--volt);}
 table.sc tr.hrow td.cur{color:var(--volt);box-shadow:none;}
 table.sc td.tot{background:var(--card2);color:var(--text);min-width:40px;}
+table.sc td.nsum{background:var(--card2);color:var(--muted);min-width:34px;font-size:12px;}
+table.sc tr.hrow td.nsum,table.sc tr.prow2 td.nsum{background:none;}
 td.sc-par{background:var(--card2) !important;color:var(--text) !important;}
 td.sc-eagle{background:var(--gold) !important;color:#1a1405 !important;border-radius:50% !important;}
 td.sc-birdie{background:var(--coral) !important;color:#fff !important;border-radius:50% !important;}
@@ -359,7 +361,7 @@ h1.mega .hl{background:var(--volt);color:#1c2405;padding:0 12px;border-radius:14
 <header id="app-header" class="hidden">
   <div class="brand">
     <svg viewBox="0 0 64 64" width="34"><rect width="64" height="64" rx="12" fill="#111"/><text x="8" y="34" font-family="Arial Black" font-weight="900" font-size="22" fill="#fff">G<tspan fill="#8dc63f">O</tspan></text><text x="8" y="52" font-family="Arial Black" font-weight="900" font-size="22" fill="#fff">LF</text></svg>
-    <div class="bt">ST CLAIR<small>LIVE SCORING</small></div>
+    <div class="bt">LIVE<small>SCORING</small></div>
   </div>
   <div class="hdr-right">
     <div id="hdr-user" class="tees-chip hidden" onclick="show('account')"></div>
@@ -392,7 +394,7 @@ h1.mega .hl{background:var(--volt);color:#1c2405;padding:0 12px;border-radius:14
   <button class="hdr-btn" id="lang-btn-home" onclick="toggleLang()" style="position:absolute;top:16px;right:16px;font-size:13px;font-weight:900;letter-spacing:1px;">EN</button>
   <div class="club-row">
     <svg viewBox="0 0 64 64" width="38"><rect width="64" height="64" rx="12" fill="#111"/><text x="8" y="34" font-family="Arial Black" font-weight="900" font-size="22" fill="#fff">G<tspan fill="#8dc63f">O</tspan></text><text x="8" y="52" font-family="Arial Black" font-weight="900" font-size="22" fill="#fff">LF</text></svg>
-    <span>DOMAINE DE ST CLAIR · ANNONAY</span>
+    <span>LIVE SCORING</span>
   </div>
   <div class="brand-strip">
     <div class="bcell"></div><div class="bcell"></div><div class="bcell b"></div><div class="bcell"></div><div class="bcell"></div><div class="bcell e"></div>
@@ -416,7 +418,7 @@ h1.mega .hl{background:var(--volt);color:#1c2405;padding:0 12px;border-radius:14
     <div style="display:flex;flex-direction:column;gap:13px;">
       <div class="field"><label data-i18n="fname">NOM ET PRÉNOM</label><input id="a-name" maxlength="30" placeholder="ex : Nicolas Paviet"></div>
       <div class="field" id="f-pin"><label data-i18n="fpin">CODE PIN (4 CHIFFRES)</label><input id="a-pin" type="password" inputmode="numeric" maxlength="4" placeholder="••••"></div>
-      <div class="field" id="f-club"><label data-i18n="fclub">TON CLUB</label><input id="a-club" maxlength="40" placeholder="Domaine de St Clair"></div>
+      <div class="field" id="f-club"><label data-i18n="fclub">TON CLUB</label><input id="a-club" maxlength="40" placeholder="Ton club de golf"></div>
       <div class="field" id="f-gender"><label data-i18n="fgender">GENRE</label>
         <div class="seg" style="justify-content:center;">
           <button id="a-gh" style="flex:1;" onclick="authG='H';syncAuthSeg()">Homme</button>
@@ -434,6 +436,14 @@ h1.mega .hl{background:var(--volt);color:#1c2405;padding:0 12px;border-radius:14
       <button class="btn btn-ghost" onclick="hide('auth-modal')" data-i18n="cancel">Annuler</button>
       <button class="btn btn-dark btn-sm" id="auth-alt" onclick=""></button>
     </div>
+  </div>
+</div>
+
+<!-- ================= CARTE D'UN AMI ================= -->
+<div id="friend-modal" class="modal-bg hidden" onclick="hide('friend-modal')">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div id="friend-modal-body"></div>
+    <div class="modal-btns"><button class="btn btn-ghost" onclick="hide('friend-modal')" data-i18n="close">Fermer</button></div>
   </div>
 </div>
 
@@ -688,8 +698,12 @@ let COURSE={
   violet:{label:'Violettes',dist:3660,h:{sss:59.5,slope:127},f:{sss:64.0,slope:129}},
   orange:{label:'Oranges', dist:2717,h:{sss:54.0,slope:113},f:{sss:54.0,slope:113}}}
 };
-const TEE_COLORS={blanc:'#e8e8e8',jaune:'#ffd83d',bleu:'#4f9dff',rouge:'#ff5e57',violet:'#b06ce3',orange:'#ff9a3d'};
-function tc(c){return (THEME==='light'&&c==='blanc')?'#a8afba':(THEME!=='light'&&c==='blanc')?'#e8e8e8':(TEE_COLORS[c]||'#888');}
+const TEE_COLORS={noire:'#111111',blanc:'#e8e8e8',jaune:'#ffd83d',bleu:'#4f9dff',rouge:'#ff5e57',violet:'#b06ce3',orange:'#ff9a3d'};
+function tc(c){
+  if(c==='blanc')return THEME==='light'?'#a8afba':'#e8e8e8';
+  if(c==='noire')return THEME==='light'?'#111111':'#d7d7d7';
+  return TEE_COLORS[c]||'#888';
+}
 function holeDist(h,tee){return (h.dists&&(h.dists[tee]??h.dists.rouge))||h.dist;}
 let HOLES=COURSE.holes, PAR_TOTAL=COURSE.par;
 
@@ -741,7 +755,7 @@ const I18N={
  back:['← Retour','← Back'],done:['Partie terminée !','Round complete!'],newround2:['Nouvelle partie','New round'],
  fname:['NOM ET PRÉNOM','FULL NAME'],fpin:['CODE PIN (4 CHIFFRES)','PIN CODE (4 DIGITS)'],fclub:['TON CLUB','YOUR CLUB'],
  fgender:['GENRE','GENDER'],findex:['INDEX (HANDICAP)','HANDICAP INDEX'],ftee:['BOULES DE DÉPART HABITUELLES','USUAL TEES'],
- validate:['Valider','Confirm'],cancel:['Annuler','Cancel'],
+ validate:['Valider','Confirm'],cancel:['Annuler','Cancel'],close:['Fermer','Close'],
  gltitle:['CLASSEMENT DU GROUPE — LIVE','GROUP LEADERBOARD — LIVE'],
  lbh:['Classements','Leaderboards'],
  scjour:['Jour','Today'],scsaison:['Saison','Season'],scringer:['Ringer','Ringer'],
@@ -797,7 +811,7 @@ function todayISO(){return new Date().toISOString().slice(0,10);}
 
 /* ================= RÉGLAGES CLUB (admin) ================= */
 let SETTINGS={points_multiplier:1,multiplier_label:'',tv_enabled:true,
- prizes:[["Balle logotée St Clair",50],["Seau de practice",80],["Polo du club",300],["Green-fee invité",500],["1 coup rendu — Grande Compétition de fin d'année",200]],
+ prizes:[["Balle logotée du club",50],["Seau de practice",80],["Polo du club",300],["Green-fee invité",500],["1 coup rendu — Grande Compétition de fin d'année",200]],
  bareme:{other:5,win:2,gap:1,gapb:2,birdie:5,eagle:15,defi:25},pro_card:null,event:null};
 async function loadSettings(){
   if(!sb)return;
@@ -1035,7 +1049,13 @@ async function renderFriendsLive(){
       .select('member_id,display_name,coups_rendus,scores,golf_rounds!inner(round_date,status,course_id,formule)')
       .in('member_id',[...FRIENDS]).eq('golf_rounds.round_date',todayISO());
     if(r.error||!r.data.length){slot.innerHTML='';return;}
-    const rows=r.data.sort((a,b)=>((b.golf_rounds||{}).status==='live'?1:0)-((a.golf_rounds||{}).status==='live'?1:0));
+    /* respecter le choix de chaque ami : masquer ceux qui m'ont exclu de leurs scores */
+    const hidMe=new Set();
+    try{const hm=await sb.from('golf_members').select('id,feed_hidden').in('id',[...FRIENDS]);
+      if(!hm.error)hm.data.forEach(m=>{if(Array.isArray(m.feed_hidden)&&m.feed_hidden.includes(S.user.id))hidMe.add(m.id);});}catch(e){}
+    const data=r.data.filter(f=>!hidMe.has(f.member_id));
+    if(!data.length){slot.innerHTML='';return;}
+    const rows=data.sort((a,b)=>((b.golf_rounds||{}).status==='live'?1:0)-((a.golf_rounds||{}).status==='live'?1:0));
     slot.innerHTML=`<div class="rescard" style="text-align:left;">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
         <div style="font-weight:800;font-size:16px;">💚 ${t('Mes amis qui jouent aujourd\'hui','My friends playing today')}</div>
@@ -1045,11 +1065,57 @@ async function renderFriendsLive(){
         const rd=f.golf_rounds||{};
         const st=unitStats({ph:f.coups_rendus||0,scores:Array.isArray(f.scores)?f.scores:[]});
         const live=rd.status==='live';
-        return `<div class="resline"><span>${live?'<b style="color:var(--coral);">●</b> ':''}<b style="font-size:16px;">${f.display_name}</b><small style="display:block;color:var(--muted);">${courseShort(rd.course_id||'st-clair')} · ${live?t('trou ','hole ')+Math.min(st.thru+1,18):t('terminé','done')}</small></span>
+        return `<div class="resline" style="cursor:pointer;" onclick="openFriendCard('${f.member_id}')"><span>${live?'<b style="color:var(--coral);">●</b> ':''}<b style="font-size:16px;">${f.display_name}</b><small style="display:block;color:var(--muted);">${courseShort(rd.course_id||'st-clair')} · ${live?t('trou ','hole ')+Math.min(st.thru+1,18):t('terminé','done')} · ${t('voir la carte ›','view card ›')}</small></span>
         <b class="num ${clsToPar(st.brut)}">${fmtToPar(st.brut)} <small style="color:var(--muted);font-weight:600;">/ ${fmtToPar(st.net)} net</small></b></div>`;
       }).join('')}
     </div>`;
   }catch(e){}
+}
+
+/* ================= CARTE D'UN AMI (détails) ================= */
+async function openFriendCard(mid){
+  if(!sb||!mid)return;
+  const modal=$('friend-modal'),body=$('friend-modal-body');
+  if(!modal||!body)return;
+  modal.classList.remove('hidden');
+  body.innerHTML=`<div class="pd-empty">${t('Chargement…','Loading…')}</div>`;
+  try{
+    /* respecter le masquage : cet ami m'a-t-il exclu de ses scores ? */
+    try{const hm=await sb.from('golf_members').select('feed_hidden').eq('id',mid).single();
+      if(!hm.error&&S.user&&Array.isArray(hm.data.feed_hidden)&&hm.data.feed_hidden.includes(S.user.id)){
+        body.innerHTML=`<div class="pd-empty">${t('Cet ami a choisi de ne pas partager ses scores avec toi.','This friend chose not to share their scores with you.')}</div>`;return;}}catch(e){}
+    const r=await sb.from('golf_round_players')
+      .select('display_name,coups_rendus,scores,hcp_index,tee_color,golf_rounds!inner(status,course_id,formule,round_date)')
+      .eq('member_id',mid).eq('golf_rounds.round_date',todayISO()).order('updated_at',{ascending:false}).limit(1);
+    if(r.error||!r.data.length){body.innerHTML=`<div class="pd-empty">${t('Aucune partie en cours aujourd\'hui.','No round today.')}</div>`;return;}
+    const p=r.data[0],rd=p.golf_rounds||{},cid=rd.course_id||'st-clair';
+    let holes=HOLES;
+    if(cid!==COURSE.id){try{const cr=await sb.from('golf_courses').select('holes').eq('id',cid).single();if(!cr.error&&cr.data&&Array.isArray(cr.data.holes))holes=cr.data.holes;}catch(e){}}
+    const scores=Array.isArray(p.scores)?p.scores:[],ph=p.coups_rendus||0;
+    const g9=(a,b)=>{let s=0,any=false;for(let i=a;i<=b;i++){const sc=scores[i];if(sc==null)continue;any=true;s+=(sc==='X'?holes[i].par+2:sc);}return any?s:'–';};
+    let brut=0,net=0,thru=0,birdies=0;
+    let hd='<tr class="hrow"><td class="lbl"></td>',pr='<tr class="prow2"><td class="lbl"></td>',sr=`<tr><td class="lbl">${(p.display_name||'?').trim().slice(0,3).toUpperCase()}</td>`;
+    for(let i=0;i<18;i++){
+      const sc=scores[i],par=holes[i].par;
+      hd+=`<td>${i+1}</td>`;pr+=`<td>${par}</td>`;
+      if(sc==null)sr+='<td>·</td>';
+      else{thru++;const g=(sc==='X'?par+2:sc);brut+=g-par;net+=g-rcvHole(ph,holes[i].si)-par;if(sc!=='X'&&sc-par===-1)birdies++;sr+=`<td class="${scoreClass(sc,par)}">${sc==='X'?'✕':sc}</td>`;}
+      if(i===8){hd+=`<td class="nsum">${t('ALL','OUT')}</td>`;pr+=`<td class="nsum">${holes.slice(0,9).reduce((s,x)=>s+x.par,0)}</td>`;sr+=`<td class="nsum">${g9(0,8)}</td>`;}
+    }
+    const parT=holes.reduce((s,x)=>s+x.par,0);
+    hd+=`<td class="nsum">${t('RET','IN')}</td><td>TOT</td></tr>`;
+    pr+=`<td class="nsum">${holes.slice(9,18).reduce((s,x)=>s+x.par,0)}</td><td>${parT}</td></tr>`;
+    sr+=`<td class="nsum">${g9(9,17)}</td><td class="tot">${thru?fmtToPar(brut):'–'}</td></tr>`;
+    body.innerHTML=`<h2 style="margin-bottom:2px;">${p.display_name}</h2>
+      <div class="sub" style="font-size:13px;margin-bottom:12px;">${courseShort(cid)} · ${rd.status==='live'?'<b style="color:var(--coral);">●</b> '+t('en jeu — trou ','live — hole ')+Math.min(thru+1,18):t('terminé','done')} · idx ${p.hcp_index??''}</div>
+      <div style="display:flex;gap:8px;justify-content:center;margin-bottom:12px;">
+        <div class="stat-tile"><div class="v num ${clsToPar(brut)}">${fmtToPar(brut)}</div><div class="k">BRUT</div></div>
+        <div class="stat-tile"><div class="v num ${clsToPar(net)}">${fmtToPar(net)}</div><div class="k">NET</div></div>
+        <div class="stat-tile"><div class="v num">${thru}/18</div><div class="k">${t('TROUS','HOLES')}</div></div>
+        ${birdies?`<div class="stat-tile"><div class="v num" style="color:var(--volt);">${birdies}</div><div class="k">🐦</div></div>`:''}
+      </div>
+      <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;"><table class="sc">${hd}${pr}${sr}</table></div>`;
+  }catch(e){body.innerHTML=`<div class="pd-empty">${t('Erreur de chargement','Load error')}</div>`;}
 }
 
 /* ================= FIL D'ACTUS DU CLUB ================= */
@@ -1067,8 +1133,16 @@ async function renderFeed(){
   try{
     const r=await sb.from('golf_feed').select('member_id,kind,payload,visibility,created_at').order('created_at',{ascending:false}).limit(30);
     if(r.error)return;
+    /* qui m'a exclu ? (masquage par ami) */
+    const hidMe=new Set();
+    if(S.user&&!S.user.guest){
+      const ids=[...new Set(r.data.map(f=>f.member_id))].filter(x=>x!==S.user.id);
+      if(ids.length){try{const hm=await sb.from('golf_members').select('id,feed_hidden').in('id',ids);
+        if(!hm.error)hm.data.forEach(m=>{if(Array.isArray(m.feed_hidden)&&m.feed_hidden.includes(S.user.id))hidMe.add(m.id);});}catch(e){}}
+    }
     const rows=r.data.filter(f=>{
       if(S.user&&!S.user.guest&&f.member_id===S.user.id)return true;
+      if(hidMe.has(f.member_id))return false;
       if(f.visibility==='club')return true;
       if(f.visibility==='friends')return S.user&&!S.user.guest&&FRIENDS.has(f.member_id);
       return false;
@@ -1273,7 +1347,7 @@ async function addFriend(){
       const q=await sb.from('golf_members').select('id').eq('name',r.data.friend).single();
       if(!q.error)pushNotify({member_id:q.data.id,
         title:r.data.status==='accepted'?'💚 Nouvel ami':'👥 Demande d\'ami',
-        body:S.user.name+(r.data.status==='accepted'?' et toi êtes maintenant amis !':' veut te suivre sur St Clair Live')});
+        body:S.user.name+(r.data.status==='accepted'?' et toi êtes maintenant amis !':' veut te suivre en live')});
     }catch(e){}
     await loadFriends();renderAccount();
   }catch(e){
@@ -1298,6 +1372,21 @@ async function removeFriend(fid){
     await rpcCall('golf_friend_remove',{p_me:S.user.id,p_pin:s.pin,p_friend:fid});
     await loadFriends();renderAccount();
   }catch(e){toast('Erreur',1);}
+}
+/* masquer / montrer mes scores & actus à un ami précis */
+async function toggleFriendVis(fid){
+  if(!S.user||S.user.guest)return;
+  const s=store.get('session');if(!s)return;
+  let hidden=Array.isArray(S.user.feed_hidden)?S.user.feed_hidden.slice():[];
+  const wasHidden=hidden.includes(fid);
+  hidden=wasHidden?hidden.filter(x=>x!==fid):hidden.concat([fid]);
+  try{
+    const r=await rpcCall('golf_set_feed_hidden',{p_me:S.user.id,p_pin:s.pin,p_hidden:hidden});
+    if(r.error)throw r.error;
+    S.user.feed_hidden=hidden;
+    toast(wasHidden?t('👁️ Visible par cet ami','👁️ Visible to this friend'):t('🙈 Masqué pour cet ami','🙈 Hidden from this friend'));
+    renderAccount();
+  }catch(e){toast(t('Erreur','Error'),1);}
 }
 
 /* reconnexion auto */
@@ -1585,15 +1674,18 @@ function metric(u){
   if(r.formule.indexOf('stab')===0)return {v:st.ptsN,disp:st.ptsN+' pts',better:'high'};
   return {v:st.brut,disp:fmtToPar(st.brut),better:'low'};
 }
+/* strokes bruts d'un neuf (trous a..b), 'X' = par+2 ; '–' si aucun trou joué */
+function nineGross(u,a,b){let s=0,any=false;for(let i=a;i<=b;i++){const sc=u.scores[i];if(sc==null)continue;any=true;s+=(sc==='X'?HOLES[i].par+2:sc);}return any?s:'–';}
 function renderPlay(){
   const r=S.round;if(!r)return;
   const h=HOLES[r.hole];
+  const par9a=HOLES.slice(0,9).reduce((s,x)=>s+x.par,0),par9b=HOLES.slice(9,18).reduce((s,x)=>s+x.par,0);
   let head='<tr class="hrow"><td class="lbl"></td>';
-  for(let i=0;i<18;i++)head+=`<td class="${i===r.hole?'cur':''}" onclick="jumpHole(${i})">${i+1}</td>`;
-  head+='<td>TOT</td></tr>';
+  for(let i=0;i<18;i++){head+=`<td class="${i===r.hole?'cur':''}" onclick="jumpHole(${i})">${i+1}</td>`;if(i===8)head+=`<td class="nsum">${t('ALL','OUT')}</td>`;}
+  head+=`<td class="nsum">${t('RET','IN')}</td><td>TOT</td></tr>`;
   let pars='<tr class="prow2"><td class="lbl"></td>';
-  for(let i=0;i<18;i++)pars+=`<td>${HOLES[i].par}</td>`;
-  pars+=`<td>${PAR_TOTAL}</td></tr>`;
+  for(let i=0;i<18;i++){pars+=`<td>${HOLES[i].par}</td>`;if(i===8)pars+=`<td class="nsum">${par9a}</td>`;}
+  pars+=`<td class="nsum">${par9b}</td><td>${PAR_TOTAL}</td></tr>`;
   let rows='';
   r.units.forEach(u=>{
     const st=unitStats(u);
@@ -1604,12 +1696,13 @@ function renderPlay(){
     for(let i=0;i<18;i++){
       const sc=u.scores[i];
       rows+=`<td class="${scoreClass(sc,HOLES[i].par)}${i===r.hole?' cur':''}" onclick="jumpHole(${i})">${sc==null?'·':(sc==='X'?'✕':sc)}</td>`;
+      if(i===8)rows+=`<td class="nsum">${nineGross(u,0,8)}</td>`;
     }
-    rows+=`<td class="tot">${tot}</td></tr>`;
+    rows+=`<td class="nsum">${nineGross(u,9,17)}</td><td class="tot">${tot}</td></tr>`;
   });
   $('sc-table').innerHTML=head+pars+rows;
   const scr=$('sc-scroll');
-  scr.scrollLeft=Math.max(0,(r.hole)*36-scr.clientWidth/2+60);
+  scr.scrollLeft=Math.max(0,(r.hole+(r.hole>=9?1:0))*36-scr.clientWidth/2+60);
 
   const holeDone=r.units.every(u=>u.scores[r.hole]!=null);
   const anyScores=r.units.some(u=>u.scores.some(s=>s!=null));
@@ -2162,7 +2255,7 @@ function notifyBirdieIfAny(u,hole){
   u._nb[hole]=1;
   pushNotify({friends_of:u.memberId,
     title:d<=-2?'🦅 Eagle !':'🐦 Birdie !',
-    body:u.name+' vient de faire '+(d<=-2?'eagle':'birdie')+' au trou '+(hole+1)+' de St Clair'});
+    body:u.name+' vient de faire '+(d<=-2?'eagle':'birdie')+' au trou '+(hole+1)+' !'});
 }
 
 /* ================= INSTALLATION PWA ================= */
@@ -2177,7 +2270,7 @@ function installHint(){
   const isIOS=/iPhone|iPad|iPod/i.test(navigator.userAgent||'');
   return `<div class="rescard" id="pwa-hint">
     <div style="font-weight:800;font-size:17px;margin-bottom:6px;">📲 Installe l'app sur ton écran d'accueil</div>
-    <div class="sub" style="font-size:14px;margin-bottom:12px;">${isIOS?'Dans Safari : bouton Partager → « Sur l’écran d’accueil ». Icône St Clair, plein écran, et ça marche même sans réseau sur le parcours.':'Un tap et l’app vit sur ton écran d’accueil — plein écran, même sans réseau sur le parcours.'}</div>
+    <div class="sub" style="font-size:14px;margin-bottom:12px;">${isIOS?'Dans Safari : bouton Partager → « Sur l’écran d’accueil ». Icône Live Scoring, plein écran, et ça marche même sans réseau sur le parcours.':'Un tap et l’app vit sur ton écran d’accueil — plein écran, même sans réseau sur le parcours.'}</div>
     ${!isIOS?'<button class="btn btn-volt btn-sm" onclick="doInstall()">Installer</button>':''}
     <button class="btn btn-ghost btn-sm" style="margin-top:8px;" onclick="dismissInstall()">Plus tard</button>
   </div>`;
@@ -2212,7 +2305,7 @@ async function shareCard(idx){
   x.fillStyle='#0c1017';x.fillRect(0,0,1000,580);
   /* entête */
   x.fillStyle='#d4ff3f';x.font='900 22px Archivo, sans-serif';
-  x.fillText('GOLF DU DOMAINE DE ST CLAIR',40,52);
+  x.fillText((COURSE.name||'Golf').toUpperCase(),40,52);
   x.fillStyle='#f2f6fb';x.font='700 46px "Space Grotesk", sans-serif';
   x.fillText(u.name,40,108);
   x.fillStyle='#8b98ab';x.font='600 22px Archivo, sans-serif';
@@ -2259,7 +2352,7 @@ async function shareCard(idx){
   c.toBlob(async(blob)=>{
     const file=new File([blob],'carte-stclair.png',{type:'image/png'});
     if(navigator.canShare&&navigator.canShare({files:[file]})){
-      try{await navigator.share({files:[file],title:'Ma carte à St Clair'});return;}catch(e){}
+      try{await navigator.share({files:[file],title:t('Ma carte — ','My card — ')+(COURSE.name||'Golf')});return;}catch(e){}
     }
     const a=document.createElement('a');
     a.href=URL.createObjectURL(blob);a.download='carte-stclair.png';a.click();
@@ -2550,7 +2643,7 @@ async function renderAccount(){
   let acc=S.user, history=[], myRounds=[], frRows=[], frMembers={}, liveFriends=[], challenges=[], allLeaguesList=[], trophies=[];
   if(!S.user.guest&&sb){
     try{
-      const m=await sb.from('golf_members').select('id,name,club,gender,hcp_index,tee_color,tees_balance,tees_earned,feed_visibility').eq('id',S.user.id).single();
+      const m=await sb.from('golf_members').select('id,name,club,gender,hcp_index,tee_color,tees_balance,tees_earned,feed_visibility,feed_hidden').eq('id',S.user.id).single();
       if(!m.error){acc={...S.user,...m.data};S.user=acc;}
       const h=await sb.from('golf_tees_history').select('delta,reason,created_at').eq('member_id',S.user.id).order('created_at',{ascending:false}).limit(10);
       if(!h.error)history=h.data;
@@ -2571,7 +2664,7 @@ async function renderAccount(){
         frRows=fr.data;
         const ids=[...new Set(frRows.flatMap(f=>[f.requester,f.addressee]))].filter(x=>x!==S.user.id);
         if(ids.length){
-          const ms=await sb.from('golf_members').select('id,name,club,hcp_index').in('id',ids);
+          const ms=await sb.from('golf_members').select('id,name,club,hcp_index,feed_hidden').in('id',ids);
           if(!ms.error)ms.data.forEach(x=>frMembers[x.id]=x);
         }
         const accIds=frRows.filter(f=>f.status==='accepted').map(f=>f.requester===S.user.id?f.addressee:f.requester);
@@ -2589,7 +2682,7 @@ async function renderAccount(){
   let html=`<div class="hero-award"><div class="lbl">${acc.name.toUpperCase()}${acc.club?' · '+acc.club.toUpperCase():''}</div>
   <div class="big" style="color:var(--gold);">${acc.tees_balance??0} 🏅</div>
   <div class="lbl" style="margin-top:8px;">${t('POINTS À DÉPENSER À LA BOUTIQUE','POINTS TO SPEND AT THE SHOP')} · ${xp} ${t('GAGNÉS AU TOTAL','EARNED IN TOTAL')}</div>
-  <div style="font-size:14px;margin-top:8px;color:var(--muted);">Index ${acc.hcp_index} · ${myTee.label} ${myTee.dist} m · ${playingHcp(acc.hcp_index||0,acc.gender||'H',acc.tee_color||'jaune')} coups rendus à St Clair</div>
+  <div style="font-size:14px;margin-top:8px;color:var(--muted);">Index ${acc.hcp_index} · ${myTee.label} ${myTee.dist} m · ${playingHcp(acc.hcp_index||0,acc.gender||'H',acc.tee_color||'jaune')} coups rendus</div>
   ${S.user.guest?'<div style="font-size:13px;margin-top:8px;color:var(--muted);">Mode invité — crée un compte pour cumuler tes points.</div>':''}</div>`;
   if(!S.user.guest){
     const nOn=!!store.get('notifs');
@@ -2681,15 +2774,16 @@ async function renderAccount(){
       const m=frMembers[f.addressee]||{name:'?'};
       fh+=`<div class="resline"><span>${m.name}</span><b style="color:var(--muted);font-size:13px;">en attente…</b></div>`;
     });
-    if(liveFriends.length){
+    const liveVisible=liveFriends.filter(f=>!(((frMembers[f.member_id]||{}).feed_hidden)||[]).includes(S.user.id));
+    if(liveVisible.length){
       fh+='<div style="font-weight:900;font-size:12px;letter-spacing:2px;color:var(--coral);margin:10px 0 2px;">● EN JEU MAINTENANT</div>';
-      liveFriends.forEach(f=>{
+      liveVisible.forEach(f=>{
         const st=unitStats({ph:f.coups_rendus,scores:Array.isArray(f.scores)?f.scores:[]});
-        fh+=`<div class="resline"><span>💚 <b style="font-size:16px;">${f.display_name}</b> <small style="color:var(--muted);">T${st.thru}</small></span>
+        fh+=`<div class="resline" style="cursor:pointer;" onclick="openFriendCard('${f.member_id}')"><span>💚 <b style="font-size:16px;">${f.display_name}</b> <small style="color:var(--muted);">T${st.thru} · ${t('voir ›','view ›')}</small></span>
           <b class="num ${clsToPar(st.brut)}">${fmtToPar(st.brut)} <small style="color:var(--muted);font-weight:600;">/ ${fmtToPar(st.net)} net</small></b></div>`;
       });
     }
-    const liveIds=new Set(liveFriends.map(f=>f.member_id));
+    const liveIds=new Set(liveVisible.map(f=>f.member_id));
     accepted.forEach(f=>{
       const fid=f.requester===S.user.id?f.addressee:f.requester;
       if(liveIds.has(fid))return;
@@ -2701,26 +2795,18 @@ async function renderAccount(){
         </span></div>`;
     });
     if(!accepted.length&&!pendingIn.length&&!pendingOut.length)fh+='<div class="pd-empty">'+t('Ajoute des membres par leur nom pour suivre leurs scores en live.','Add members by name to follow their live scores.')+'</div>';
+    if(accepted.length){
+      const hiddenSet=new Set(Array.isArray(S.user.feed_hidden)?S.user.feed_hidden:[]);
+      fh+=`<div style="font-weight:900;font-size:12px;letter-spacing:1.5px;color:var(--muted);margin:14px 0 4px;">👁️ ${t('QUI VOIT MES SCORES','WHO SEES MY SCORES')}</div>`;
+      accepted.forEach(f=>{
+        const fid=f.requester===S.user.id?f.addressee:f.requester;
+        const m=frMembers[fid]||{name:'?'};const hid=hiddenSet.has(fid);
+        fh+=`<div class="resline"><span>${hid?'🙈':'💚'} ${m.name}</span>
+          <button class="btn btn-sm ${hid?'btn-dark':'btn-volt'}" style="width:auto;padding:6px 14px;" onclick="toggleFriendVis('${fid}')">${hid?t('Masqué','Hidden'):t('Visible','Visible')}</button></div>`;
+      });
+    }
     fh+='</div>';
-    hA+=fh+`<button class="btn btn-dark" onclick="show('defis')">${t('Mes défis','My challenges')}</button>`;
-    /* ---- ligues ---- */
-    let lh=`<div class="rescard"><div style="font-weight:800;font-size:17px;margin-bottom:10px;">${t('Mes ligues','My leagues')}</div>
-      <div class="sub" style="font-size:13px;margin-bottom:10px;">${t('Une ligue = un classement Saison et Ringer entre vous (ex : les Seniors du mardi).','A league = its own Season and Ringer rankings (e.g. Tuesday Seniors).')}</div>
-      <div style="display:flex;gap:8px;margin-bottom:10px;">
-        <input id="league-name" class="ainp" placeholder="${t('Nom de la nouvelle ligue','New league name')}" maxlength="30" style="flex:1;">
-        <button class="btn btn-volt btn-sm" style="width:auto;padding:12px 18px;" onclick="createLeague()">${t('+ Créer','+ Create')}</button>
-      </div>`;
-    LEAGUES.forEach(l=>{
-      lh+=`<div class="resline"><span><b style="font-size:16px;">${l.name}</b></span>
-        <button style="color:var(--muted);font-size:15px;" onclick="leaveLeague('${l.id}')">✕</button></div>`;
-    });
-    const mine=new Set(LEAGUES.map(l=>l.id));
-    (allLeaguesList||[]).filter(l=>!mine.has(l.id)).slice(0,8).forEach(l=>{
-      lh+=`<div class="resline"><span>${l.name}</span>
-        <button class="btn btn-dark btn-sm" style="width:auto;padding:8px 14px;" onclick="joinLeague('${l.id}')">${t('Rejoindre','Join')}</button></div>`;
-    });
-    lh+='</div>';
-    hA+=lh;
+    hA+=fh+`<button class="btn btn-dark" onclick="show('defis')">${t('⚔️ Défier un ami / mes défis','⚔️ Challenge a friend / my duels')}</button>`;
   }
   /* ---- historique de parties ---- */
   if(myRounds.length){
