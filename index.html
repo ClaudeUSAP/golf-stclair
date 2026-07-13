@@ -2800,21 +2800,24 @@ async function renderAccount(){
   let hS='',hA='';
   /* ---- badges ---- */
   if(!S.user.guest){
-    /* ---- carte éclectique (ringer perso) ---- */
+    /* parcours domicile (ringer/stats = home course uniquement, indépendant du parcours sélectionné) */
+    let homeHoles=HOLES;
+    if(COURSE.id!=='st-clair'&&sb){try{const hc=await sb.from('golf_courses').select('holes').eq('id','st-clair').single();if(!hc.error&&hc.data&&Array.isArray(hc.data.holes))homeHoles=hc.data.holes;}catch(e){}}
+    /* ---- carte éclectique (ringer perso — parcours domicile seulement) ---- */
     const best=Array(18).fill(null);
     stRounds.forEach(rp=>{(Array.isArray(rp.scores)?rp.scores:[]).forEach((sc,i)=>{if(typeof sc==='number'&&i<18&&(best[i]==null||sc<best[i]))best[i]=sc;});});
     if(best.some(x=>x!=null)){
       let covered=0,toPar=0,cells='';
       best.forEach((b,i)=>{
-        if(b!=null){covered++;toPar+=b-HOLES[i].par;}
-        cells+=`<td class="${b!=null?scoreClass(b,HOLES[i].par):''}">${b??'·'}</td>`;
+        if(b!=null){covered++;toPar+=b-homeHoles[i].par;}
+        cells+=`<td class="${b!=null?scoreClass(b,homeHoles[i].par):''}">${b??'·'}</td>`;
       });
       hS+=`<div class="rescard" style="padding:14px;">
         <div style="display:flex;justify-content:space-between;font-weight:800;font-size:17px;margin-bottom:10px;">
-          <span>🗺️ Ma carte éclectique</span><span class="num ${clsToPar(toPar)}">${fmtToPar(toPar)} <small style="color:var(--muted);">· ${covered}/18</small></span>
+          <span>🗺️ ${t('Ma carte éclectique','My ringer card')} · ${courseShort('st-clair')}</span><span class="num ${clsToPar(toPar)}">${fmtToPar(toPar)} <small style="color:var(--muted);">· ${covered}/18</small></span>
         </div>
         <div style="overflow-x:auto;"><table class="sc"><tr>${cells}</tr></table></div>
-        <div style="font-size:12px;color:var(--muted);margin-top:8px;">Ton meilleur score sur chaque trou, toutes parties confondues.</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:8px;">${t('Ton meilleur score sur chaque trou — uniquement tes parties au parcours domicile ('+courseShort('st-clair')+').','Your best score on each hole — home course rounds only ('+courseShort('st-clair')+').')}</div>
       </div>`;
     }
     /* ---- stats perso ---- */
@@ -2825,7 +2828,7 @@ async function renderAccount(){
         const scores=Array.isArray(rp.scores)?rp.scores:[];
         const st=unitStats({ph:rp.coups_rendus||0,scores});
         if(st.thru>=9)evol.push(st.net);
-        for(let i=0;i<18;i++){const sc=scores[i];if(typeof sc==='number'){per[i].n++;per[i].sum+=sc-HOLES[i].par;}}
+        for(let i=0;i<18;i++){const sc=scores[i];if(typeof sc==='number'){per[i].n++;per[i].sum+=sc-homeHoles[i].par;}}
       });
       const played=per.map((p,i)=>({i,n:p.n,avg:p.n?p.sum/p.n:0})).filter(p=>p.n>=2);
       let sh='';
