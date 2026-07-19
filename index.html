@@ -498,6 +498,10 @@ h1.mega .hl{background:var(--volt);color:#1c2405;padding:0 12px;border-radius:14
   <div id="freq-slot" style="width:100%;"></div>
   <div id="friends-slot" style="width:100%;"></div>
   <div id="feed-slot" style="width:100%;"></div>
+  <div style="display:flex;gap:10px;width:100%;">
+    <button class="btn btn-dark btn-sm" style="flex:1;" onclick="show('account')" data-i18n="acct">👤 Mon compte</button>
+    <button class="btn btn-dark btn-sm" style="flex:1;" onclick="accTab='amis';show('account')" data-i18n="frnds">👥 Mes amis</button>
+  </div>
   <button class="btn btn-ghost btn-sm" onclick="show('home')">🔄 <span data-i18n="switchp">Changer de joueur</span></button>
 </div>
 
@@ -737,6 +741,7 @@ const I18N={
  member:["J'ai (bientôt) un compte (nom + PIN)",'I (soon) have an account (name + PIN)'],
  guest:['Jouer — sans compte','Play — no account'],
  how:['Comment ça marche ?','How does it work?'],
+ acct:['👤 Mon compte','👤 My account'],frnds:['👥 Mes amis','👥 My friends'],
  step1:['Étape 1','Step 1'],whatplay:['On joue quoi ?','What are we playing?'],
  newround:['Nouvelle partie','New round'],
  jointitle:['Rejoindre une compétition en cours','Join a live competition'],
@@ -1545,9 +1550,12 @@ function renderFormuleGrid(){
   const cb=$('club-banners');if(cb)cb.innerHTML=bh;
   /* sélecteur de parcours (pré-enregistrés) */
   const cs=$('course-select');
-  if(cs)cs.innerHTML=COURSES.length>1?COURSES.map(c=>
-    `<div class="gl-chip ${COURSE.id===c.id?'first':''}" style="cursor:pointer;" onclick="setCourse('${c.id}')">${c.id==='st-clair'?'⛳ ':'✈️ '}${courseShort(c.id)} <span class="num" style="color:var(--muted);">${c.par}</span></div>`
-  ).join(''):'';
+  if(cs)cs.innerHTML=COURSES.length>1?(
+    `<div style="font-weight:900;font-size:12px;letter-spacing:1.5px;color:var(--muted);margin-bottom:6px;flex-basis:100%;">⛳ ${t('CHOISIS TON PARCOURS','CHOOSE YOUR COURSE')}</div>`+
+    COURSES.map(c=>
+      `<div class="gl-chip ${COURSE.id===c.id?'first':''}" style="cursor:pointer;font-size:15px;padding:10px 14px;" onclick="setCourse('${c.id}')">${c.id==='st-clair'?'⛳ ':'✈️ '}${courseShort(c.id)} <span class="num" style="color:var(--muted);">${c.par}</span></div>`
+    ).join('')
+  ):'';
 }
 function pickFormule(id){S.setup.formule=id;renderFormuleGrid();}
 function defaultPlayer(i){
@@ -2930,14 +2938,15 @@ async function renderAccount(){
     if(!accepted.length&&!pendingIn.length&&!pendingOut.length)fh+='<div class="pd-empty">'+t('Ajoute des membres par leur nom pour suivre leurs scores en live.','Add members by name to follow their live scores.')+'</div>';
     if(accepted.length){
       const hiddenSet=new Set(Array.isArray(S.user.feed_hidden)?S.user.feed_hidden:[]);
-      fh+=`<div style="font-weight:900;font-size:12px;letter-spacing:1.5px;color:var(--muted);margin:14px 0 4px;">👁️ ${t('QUI VOIT MES SCORES','WHO SEES MY SCORES')}</div>`;
+      fh+=`<div style="font-weight:900;font-size:12px;letter-spacing:1.5px;color:var(--muted);margin:16px 0 4px;">👁️ ${t('QUI VOIT MES SCORES','WHO SEES MY SCORES')}</div>`;
+      fh+=`<div class="sub" style="font-size:12px;margin-bottom:8px;">${t('Choisis les amis autorisés à voir tes scores et ton activité.','Choose which friends can see your scores and activity.')}</div>`;
       accepted.forEach(f=>{
         const fid=f.requester===S.user.id?f.addressee:f.requester;
-        const m=frMembers[fid]||{name:'?'};const hid=hiddenSet.has(fid);
-        fh+=`<div class="resline"><span>${hid?'🙈':'💚'} ${m.name}</span>
-          <button class="btn btn-sm ${hid?'btn-dark':'btn-volt'}" style="width:auto;padding:6px 14px;" onclick="toggleFriendVis('${fid}')">${hid?t('Masqué','Hidden'):t('Visible','Visible')}</button></div>`;
+        const m=frMembers[fid]||{name:'?'};const allowed=!hiddenSet.has(fid);
+        fh+=`<div class="switch ${allowed?'on':''}" onclick="toggleFriendVis('${fid}')"><span>${t('Autoriser','Allow')} <b>${m.name}</b> ${t('à voir mes scores','to see my scores')}</span><span class="chk">${allowed?'✓':''}</span></div>`;
       });
     }
+    fh+=`<div class="sub" style="font-size:12px;margin-top:10px;color:var(--muted);line-height:1.5;">⚠️ ${t('Les joueurs de ton groupe du jour voient tes scores pendant la partie, même s\'ils ne sont pas tes amis.','Players in your group can see your scores during the round, even if they are not your friends.')}</div>`;
     fh+='</div>';
     hA+=fh+`<button class="btn btn-dark" onclick="show('defis')">${t('⚔️ Défier un ami / mes défis','⚔️ Challenge a friend / my duels')}</button>`;
   }
