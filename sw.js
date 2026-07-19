@@ -1,5 +1,5 @@
 /* St Clair Live Scoring — service worker */
-const VERSION = 'stclair-v30';
+const VERSION = 'stclair-v31';
 
 /* ===== notifications push ===== */
 self.addEventListener('push', (e) => {
