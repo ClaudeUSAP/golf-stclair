@@ -485,7 +485,7 @@ h1.mega .hl{background:var(--volt);color:#1c2405;padding:0 12px;border-radius:14
   <div><h2 data-i18n="whatplay">On joue quoi ?</h2></div>
   <div id="club-banners" style="display:flex;flex-direction:column;gap:10px;"></div>
   <div id="replay-slot" style="width:100%;"></div>
-  <button class="btn btn-volt" onclick="show('formule')" data-i18n="newround">Nouvelle partie</button>
+  <button class="btn btn-volt" onclick="newRoundFlow()" data-i18n="newround">Nouvelle partie</button>
   <button class="btn btn-volt" onclick="toggleJoin()" data-i18n="jointitle">Rejoindre une compétition en cours</button>
   <div id="join-panel" class="panel hidden" style="gap:10px;">
     <div class="sub" style="font-size:13px;" data-i18n="joindesc">Le marqueur te donne le code affiché sur son écran de jeu — tu suis et saisis depuis ton propre téléphone, tout se synchronise.</div>
@@ -514,11 +514,21 @@ h1.mega .hl{background:var(--volt);color:#1c2405;padding:0 12px;border-radius:14
 </div>
 
 <!-- ================= FORMULE ================= -->
-<div id="screen-formule" class="screen">
-  <div><h2 data-i18n="format">La formule du jour</h2></div>
+<!-- ================= ÉTAPE 1 : PARCOURS ================= -->
+<div id="screen-course" class="screen">
+  <div><h2>⛳ <span data-i18n="stepcourse">Le parcours</span></h2></div>
+  <p class="sub" style="font-size:13px;" data-i18n="stepcoursesub">Choisis où vous jouez aujourd'hui.</p>
   <div id="course-select" class="group-live" style="margin:0;"></div>
+  <button class="btn btn-volt" onclick="gotoPlayers()" data-i18n="continue">Continuer →</button>
+  <button class="btn btn-ghost btn-sm" onclick="backHome()" data-i18n="back">← Retour</button>
+</div>
+
+<!-- ================= ÉTAPE 3 : FORMAT ================= -->
+<div id="screen-formule" class="screen">
+  <div><h2 data-i18n="stepformat">Le format de jeu</h2></div>
   <div class="choice-grid" id="formule-grid"></div>
-  <button class="btn btn-volt" onclick="gotoPlayers()">Continuer →</button>
+  <button class="btn btn-volt" onclick="startRound()" data-i18n="teeoff">⛳ Départ trou n°1</button>
+  <button class="btn btn-ghost btn-sm" onclick="show('players')" data-i18n="backplayers">← Joueurs</button>
 </div>
 
 <!-- ================= JOUEURS ================= -->
@@ -537,8 +547,8 @@ h1.mega .hl{background:var(--volt);color:#1c2405;padding:0 12px;border-radius:14
     <span style="font-weight:800;font-size:18px;">€</span>
   </div>
   <p class="sub" style="font-size:13px;" data-i18n="potdesc">Cagnotte = 5 € × participants du jour. Birdie = 1 part, eagle = 3 parts, partage au prorata. Touche 🐦 sur chaque joueur pour l'inscrire.</p>
-  <button class="btn btn-volt" onclick="startRound()" data-i18n="teeoff">⛳ Départ trou n°1</button>
-  <button class="btn btn-ghost btn-sm" onclick="show('formule')" data-i18n="changeformat">← Changer de formule</button>
+  <button class="btn btn-volt" onclick="show('formule')" data-i18n="continue">Continuer →</button>
+  <button class="btn btn-ghost btn-sm" onclick="show('course')" data-i18n="backcourse">← Parcours</button>
 </div>
 
 <!-- ================= PLAY ================= -->
@@ -742,6 +752,9 @@ const I18N={
  guest:['Jouer — sans compte','Play — no account'],
  how:['Comment ça marche ?','How does it work?'],
  acct:['👤 Mon compte','👤 My account'],frnds:['👥 Mes amis','👥 My friends'],
+ stepcourse:['Le parcours','The course'],stepcoursesub:['Choisis où vous jouez aujourd\'hui.','Choose where you play today.'],
+ stepformat:['Le format de jeu','The game format'],
+ continue:['Continuer →','Continue →'],backplayers:['← Joueurs','← Players'],backcourse:['← Parcours','← Course'],
  step1:['Étape 1','Step 1'],whatplay:['On joue quoi ?','What are we playing?'],
  newround:['Nouvelle partie','New round'],
  jointitle:['Rejoindre une compétition en cours','Join a live competition'],
@@ -827,7 +840,7 @@ async function loadSettings(){
   }catch(e){}
 }
 
-const SCREENS=['home','start','defis','formule','players','play','cards','lb','summary','account','help','admin'];
+const SCREENS=['home','start','defis','course','formule','players','play','cards','lb','summary','account','help','admin'];
 function show(name){
   SCREENS.forEach(s=>{const el=$('screen-'+s);if(el)el.classList.add('hidden');});
   unhide('screen-'+name);
@@ -837,6 +850,7 @@ function show(name){
   if(name==='admin')renderAdmin();
   if(name==='start')renderStart();
   if(name==='defis')renderDefis();
+  if(name==='course')renderCourse();
   if(name==='formule')renderFormuleGrid();
   if(name==='lb'){refreshField().then(renderLb);renderLb();startLbPoll();}else stopLbPoll();
   if(name==='account')renderAccount();
@@ -1537,7 +1551,12 @@ async function restoreSession(){
 
 /* ================= SETUP ================= */
 function renderFormuleGrid(){
-  $('formule-grid').innerHTML=FORMULES.map(f=>
+  /* formats compatibles avec le nombre de joueurs déjà choisi */
+  const cnt=S.setup.count||1;
+  const avail=FORMULES.filter(f=>cnt>=f.min&&cnt<=f.max&&((cnt-f.min)%(f.step||1)===0));
+  const list=avail.length?avail:FORMULES;
+  if(list.length&&!list.find(f=>f.id===S.setup.formule))S.setup.formule=list[0].id;
+  $('formule-grid').innerHTML=list.map(f=>
     `<button class="choice ${S.setup.formule===f.id?'sel':''}" onclick="pickFormule('${f.id}')">${f.label}<span class="desc">${LANG==='en'?(f.den||f.desc):f.desc}</span></button>`
   ).join('');
   let bh='';
@@ -1548,14 +1567,15 @@ function renderFormuleGrid(){
   if(SETTINGS.pro_card&&SETTINGS.pro_card.active)
     bh+=`<div class="pot-banner" style="border-color:rgba(255,94,87,.5);color:var(--coral);background:linear-gradient(120deg,#2a1210,#1a1010);"><span>🎯 BEAT THE PRO</span><span style="font-size:13px;font-weight:700;">bats la carte de ${SETTINGS.pro_card.name||'notre pro'} — visible au leaderboard</span></div>`;
   const cb=$('club-banners');if(cb)cb.innerHTML=bh;
-  /* sélecteur de parcours (pré-enregistrés) */
+}
+/* étape 1 : sélecteur de parcours */
+function renderCourse(){
   const cs=$('course-select');
-  if(cs)cs.innerHTML=COURSES.length>1?(
-    `<div style="font-weight:900;font-size:12px;letter-spacing:1.5px;color:var(--muted);margin-bottom:6px;flex-basis:100%;">⛳ ${t('CHOISIS TON PARCOURS','CHOOSE YOUR COURSE')}</div>`+
-    COURSES.map(c=>
-      `<div class="gl-chip ${COURSE.id===c.id?'first':''}" style="cursor:pointer;font-size:15px;padding:10px 14px;" onclick="setCourse('${c.id}')">${c.id==='st-clair'?'⛳ ':'✈️ '}${courseShort(c.id)} <span class="num" style="color:var(--muted);">${c.par}</span></div>`
-    ).join('')
-  ):'';
+  if(!cs)return;
+  const list=(COURSES&&COURSES.length)?COURSES:[{id:COURSE.id,name:COURSE.name,par:COURSE.par}];
+  cs.innerHTML=list.map(c=>
+    `<div class="gl-chip ${COURSE.id===c.id?'first':''}" style="cursor:pointer;font-size:16px;padding:13px 16px;" onclick="setCourse('${c.id}')">${c.id==='st-clair'?'⛳ ':'✈️ '}${courseShort(c.id)} <span class="num" style="color:var(--muted);">par ${c.par}</span></div>`
+  ).join('');
 }
 function pickFormule(id){S.setup.formule=id;renderFormuleGrid();}
 function defaultPlayer(i){
@@ -1568,11 +1588,9 @@ function toggleJoin(){
   if(!p.classList.contains('hidden'))$('join-code').focus();
 }
 function gotoPlayers(){
-  S.setup.formule=normFormule(S.setup.formule)||'stroke';
-  const f=FORMULES.find(x=>x.id===S.setup.formule)||FORMULES[0];
-  let counts=[];for(let c=f.min;c<=f.max;c+=(f.step||1))counts.push(c);
+  const counts=[1,2,3,4];
   if(!counts.includes(S.setup.count))S.setup.count=counts[0];
-  $('players-sub').textContent=f.id==='scramble'?t('Scramble : équipes de 2 (2 ou 4 joueurs)','Scramble: teams of 2 (2 or 4 players)'):t('Combien êtes-vous ?','How many players?');
+  $('players-sub').textContent=t('Combien êtes-vous ?','How many players?');
   $('count-grid').innerHTML=counts.map(c=>
     `<button class="choice big ${S.setup.count===c?'sel':''}" onclick="pickCount(${c})">${c}</button>`
   ).join('');
@@ -2343,7 +2361,12 @@ async function finishRound(){
   store.set('round',null);
   show('summary');
 }
-function newRound(){show('formule');renderFormuleGrid();}
+function newRound(){newRoundFlow();}
+function newRoundFlow(){
+  /* réinit léger du setup pour une nouvelle partie */
+  if((COURSES||[]).length>1)show('course');
+  else gotoPlayers();
+}
 
 /* ================= NOTIFICATIONS PUSH ================= */
 const VAPID_PUB='BBLRu61vRCIHAsnOpdt6XzqCsuYaSSocZoYzdFj7GUYaoZx5S2oLGNYIeDgqh5OPHa1l42X10bJrhsahuyzlmoc';
@@ -3012,7 +3035,7 @@ async function setCourse(id){
   await loadCourse(id);
   S.setup.courseId=COURSE.id;
   lbField=[];ringerCache={t:0,rows:[]};
-  renderFormuleGrid();
+  renderCourse();
 }
 function courseShort(id){
   if(id==='st-clair')return 'St Clair';
