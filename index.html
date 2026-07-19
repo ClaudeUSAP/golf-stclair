@@ -1047,9 +1047,13 @@ async function renderStart(){
   if(hub)hub.innerHTML=`<button class="btn btn-ghost btn-sm" style="width:100%;" onclick="show('defis')">${t('Lancer ou suivre un défi','Start or follow a challenge')}</button>`;
   if(sb&&S.user&&!S.user.guest){
     try{
-      const r=await sb.from('golf_challenges').select('id').eq('challenged',S.user.id).eq('status','pending');
+      const r=await sb.from('golf_challenges').select('id,challenger').eq('challenged',S.user.id).eq('status','pending');
       if(!r.error&&r.data.length&&hub){
-        hub.innerHTML=`<button class="btn" style="width:100%;background:var(--coral);color:#fff;box-shadow:0 6px 22px rgba(255,94,87,.3);" onclick="show('defis')">⚔️ ${r.data.length} ${t('défi'+(r.data.length>1?'s':'')+' t\'attend'+(r.data.length>1?'ent':''),'challenge'+(r.data.length>1?'s':'')+' waiting')} — ${t('Répondre','Respond')}</button>`;
+        let who='';
+        try{const cm=await sb.from('golf_members').select('id,name').in('id',r.data.map(x=>x.challenger));
+          if(!cm.error&&cm.data.length)who=cm.data.map(x=>x.name).slice(0,2).join(', ')+(cm.data.length>2?'…':'');}catch(e){}
+        const label=who?`<b>${who}</b> ${t('t\'a défié','challenged you')}`:`${r.data.length} ${t('défi'+(r.data.length>1?'s':'')+' t\'attend'+(r.data.length>1?'ent':''),'challenge'+(r.data.length>1?'s':'')+' waiting')}`;
+        hub.innerHTML=`<button class="btn" style="width:100%;background:var(--coral);color:#fff;box-shadow:0 6px 22px rgba(255,94,87,.3);" onclick="show('defis')">⚔️ ${label} — ${t('Répondre','Respond')}</button>`;
       }
     }catch(e){}
   }
@@ -2948,27 +2952,21 @@ async function renderAccount(){
       });
     }
     const liveIds=new Set(liveVisible.map(f=>f.member_id));
+    const hiddenSet=new Set(Array.isArray(S.user.feed_hidden)?S.user.feed_hidden:[]);
+    if(accepted.length)fh+=`<div class="sub" style="font-size:12px;margin:8px 0 6px;">👁️ ${t('L\'œil = cet ami voit tes scores. Touche-le pour l\'autoriser ou le masquer. ⚔️ = défier.','Eye = this friend sees your scores. Tap to allow or hide. ⚔️ = challenge.')}</div>`;
     accepted.forEach(f=>{
       const fid=f.requester===S.user.id?f.addressee:f.requester;
       if(liveIds.has(fid))return;
       const m=frMembers[fid]||{name:'?'};
-      fh+=`<div class="resline"><span>💚 ${m.name} <small style="color:var(--muted);">idx ${m.hcp_index??''}</small></span>
+      const allowed=!hiddenSet.has(fid);
+      fh+=`<div class="resline"><span>💚 <b>${m.name}</b> <small style="color:var(--muted);">idx ${m.hcp_index??''}</small></span>
         <span style="display:flex;gap:12px;align-items:center;">
-          <button style="font-size:17px;" title="${t('Défier','Challenge')}" onclick="challengeFriend('${fid}','${(m.name||'').replace(/'/g,'&#39;')}')">⚔️</button>
-          <button style="color:var(--muted);font-size:15px;" onclick="removeFriend('${fid}')">✕</button>
+          <button class="opt-chip ${allowed?'on':''}" style="${allowed?'border-color:rgba(212,255,63,.55);background:rgba(212,255,63,.12);':'opacity:.5;'}" title="${allowed?t('Voit mes scores — toucher pour masquer','Sees my scores — tap to hide'):t('Masqué — toucher pour autoriser','Hidden — tap to allow')}" onclick="toggleFriendVis('${fid}')">${allowed?'👁️':'🙈'}</button>
+          <button style="font-size:17px;" title="${t('Défier cet ami','Challenge this friend')}" onclick="challengeFriend('${fid}','${(m.name||'').replace(/'/g,'&#39;')}')">⚔️</button>
+          <button style="color:var(--muted);font-size:15px;" title="${t('Retirer l\'ami','Remove friend')}" onclick="removeFriend('${fid}')">✕</button>
         </span></div>`;
     });
     if(!accepted.length&&!pendingIn.length&&!pendingOut.length)fh+='<div class="pd-empty">'+t('Ajoute des membres par leur nom pour suivre leurs scores en live.','Add members by name to follow their live scores.')+'</div>';
-    if(accepted.length){
-      const hiddenSet=new Set(Array.isArray(S.user.feed_hidden)?S.user.feed_hidden:[]);
-      fh+=`<div style="font-weight:900;font-size:12px;letter-spacing:1.5px;color:var(--muted);margin:16px 0 4px;">👁️ ${t('QUI VOIT MES SCORES','WHO SEES MY SCORES')}</div>`;
-      fh+=`<div class="sub" style="font-size:12px;margin-bottom:8px;">${t('Choisis les amis autorisés à voir tes scores et ton activité.','Choose which friends can see your scores and activity.')}</div>`;
-      accepted.forEach(f=>{
-        const fid=f.requester===S.user.id?f.addressee:f.requester;
-        const m=frMembers[fid]||{name:'?'};const allowed=!hiddenSet.has(fid);
-        fh+=`<div class="switch ${allowed?'on':''}" onclick="toggleFriendVis('${fid}')"><span>${t('Autoriser','Allow')} <b>${m.name}</b> ${t('à voir mes scores','to see my scores')}</span><span class="chk">${allowed?'✓':''}</span></div>`;
-      });
-    }
     fh+=`<div class="sub" style="font-size:12px;margin-top:10px;color:var(--muted);line-height:1.5;">⚠️ ${t('Les joueurs de ton groupe du jour voient tes scores pendant la partie, même s\'ils ne sont pas tes amis.','Players in your group can see your scores during the round, even if they are not your friends.')}</div>`;
     fh+='</div>';
     hA+=fh+`<button class="btn btn-dark" onclick="show('defis')">${t('⚔️ Défier un ami / mes défis','⚔️ Challenge a friend / my duels')}</button>`;
