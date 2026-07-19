@@ -453,6 +453,7 @@ h1.mega .hl{background:var(--volt);color:#1c2405;padding:0 12px;border-radius:14
     <h2>⚔️ <span data-i18n="dtitle">Défi</span></h2>
     <p class="sub" id="defi-sub"></p>
     <div class="choice-grid" id="defi-fmts"></div>
+    <div class="sub" style="font-size:12px;margin-top:8px;line-height:1.5;" data-i18n="dcross">🌍 Stroke play et Stableford net tiennent compte de la difficulté du parcours — le défi peut se jouer sur des parcours différents. Match play et Stableford brut : à jouer sur le même parcours.</div>
     <div class="field" style="margin-top:14px;"><label data-i18n="dstake">MISE (POINTS)</label><input id="defi-stake" type="number" inputmode="numeric" min="1" max="500"></div>
     <div class="modal-btns">
       <button class="btn btn-volt" onclick="confirmChallenge()" data-i18n="dsend">Envoyer le défi</button>
@@ -560,6 +561,11 @@ h1.mega .hl{background:var(--volt);color:#1c2405;padding:0 12px;border-radius:14
   </div>
 </div>
 <div id="screen-play" class="screen" style="padding-top:14px;gap:14px;">
+  <div class="tabs" id="play-tabs" style="width:100%;">
+    <button class="tab on" id="ptab-entry" onclick="setPlayTab('entry')">⛳ <span data-i18n="ptenter">Saisie</span></button>
+    <button class="tab" id="ptab-lb" onclick="setPlayTab('lb')">🏆 <span data-i18n="ptlb">Classement</span></button>
+  </div>
+  <div id="play-entry" style="display:flex;flex-direction:column;gap:14px;width:100%;">
   <div class="hole-head">
     <div>
       <div class="hlbl" data-i18n="hole">TROU</div>
@@ -595,6 +601,8 @@ h1.mega .hl{background:var(--volt);color:#1c2405;padding:0 12px;border-radius:14
     <span><i class="dot" style="background:var(--blue-deep)"></i>DOUBLE</span>
     <span><i class="dot" style="background:var(--grey)"></i>TRIPLE+</span>
   </div>
+  </div>
+  <div id="play-lb" class="hidden" style="width:100%;"></div>
 </div>
 
 <!-- ================= CARTES DU GROUPE ================= -->
@@ -755,6 +763,8 @@ const I18N={
  stepcourse:['Le parcours','The course'],stepcoursesub:['Choisis où vous jouez aujourd\'hui.','Choose where you play today.'],
  stepformat:['Le format de jeu','The game format'],
  continue:['Continuer →','Continue →'],backplayers:['← Joueurs','← Players'],backcourse:['← Parcours','← Course'],
+ ptenter:['Saisie','Enter scores'],ptlb:['Classement','Leaderboard'],
+ dcross:['🌍 Stroke play et Stableford net tiennent compte de la difficulté du parcours — le défi peut se jouer sur des parcours différents. Match play et Stableford brut : à jouer sur le même parcours.','🌍 Stroke play and Stableford net account for course difficulty — the challenge can be played on different courses. Match play and gross Stableford: play the same course.'],
  step1:['Étape 1','Step 1'],whatplay:['On joue quoi ?','What are we playing?'],
  newround:['Nouvelle partie','New round'],
  jointitle:['Rejoindre une compétition en cours','Join a live competition'],
@@ -844,7 +854,7 @@ const SCREENS=['home','start','defis','course','formule','players','play','cards
 function show(name){
   SCREENS.forEach(s=>{const el=$('screen-'+s);if(el)el.classList.add('hidden');});
   unhide('screen-'+name);
-  if(name==='play'&&S.round){unhide('sc-zone');renderPlay();}else hide('sc-zone');
+  if(name==='play'&&S.round){unhide('sc-zone');renderPlay();setPlayTab('entry');}else hide('sc-zone');
   if(name==='home')hide('app-header');else unhide('app-header');
   if(name==='cards')renderGroupCards();
   if(name==='admin')renderAdmin();
@@ -1706,13 +1716,14 @@ function stabPts(sc,par,rcv){
   if(sc==='X')return 0;
   return Math.max(0,2+par+rcv-sc);
 }
-function unitStats(u){
+function unitStats(u,holesArg){
+  const H=(holesArg&&holesArg.length)?holesArg:HOLES;
   let thru=0,brut=0,net=0,ptsB=0,ptsN=0,birdies=0,eagles=0;
   for(let i=0;i<18;i++){
     const sc=u.scores[i];
     if(sc==null)continue;
     thru++;
-    const h=HOLES[i],rcv=rcvHole(u.ph??0,h.si);
+    const h=H[i],rcv=rcvHole(u.ph??0,h.si);
     brut+=numScore(sc,h.par,0)-h.par;
     net+=numScore(sc,h.par,rcv)-rcv-h.par;
     ptsB+=stabPts(sc,h.par,0);
@@ -1914,7 +1925,42 @@ function renderPlay(){
   $('btn-next').classList.toggle('ready',holeDone);
   $('btn-finish').style.display=anyScores?'flex':'none';
   $('gcode').textContent=r.code&&r.online!==false?(t('👥 CODE GROUPE : ','👥 GROUP CODE: ')+r.code+t(' — les autres peuvent rejoindre et saisir',' — others can join and enter scores')):'';
+  if(playTab==='lb')renderPlayLb();
   persistRound();
+}
+let playTab='entry';
+function setPlayTab(tab){
+  playTab=tab;
+  const entry=tab==='entry';
+  const pe=$('play-entry'),pl=$('play-lb'),sz=$('sc-zone');
+  if(pe)pe.classList.toggle('hidden',!entry);
+  if(pl)pl.classList.toggle('hidden',entry);
+  if(sz)sz.classList.toggle('hidden',!entry||!S.round);
+  const te=$('ptab-entry'),tl=$('ptab-lb');
+  if(te)te.classList.toggle('on',entry);
+  if(tl)tl.classList.toggle('on',!entry);
+  if(!entry)renderPlayLb();
+  window.scrollTo(0,0);
+}
+function renderPlayLb(){
+  const r=S.round,el=$('play-lb');if(!el)return;
+  if(!r){el.innerHTML='';return;}
+  const stab=r.formule.indexOf('stab')===0,chou=r.formule==='chouette';
+  const cpts=chou?chouettePoints(r.units):null;
+  let rows=r.units.map((u,i)=>{const st=unitStats(u);const v=chou?cpts[i]:(stab?st.ptsN:st.net);return {u,st,v};})
+    .sort((a,b)=>(stab||chou)?b.v-a.v:a.v-b.v);
+  let pos=0,prev=null;
+  const list=rows.map((x,i)=>{
+    if(prev===null||x.v!==prev){pos=i+1;prev=x.v;}
+    const st=x.st;
+    const val=chou?(fmtPts(x.v)+' pts'):stab?(st.ptsN+' pts <small style="color:var(--muted);">net</small>'):(fmtToPar(st.brut)+' <small style="color:var(--muted);">brut</small> · '+fmtToPar(st.net)+' <small style="color:var(--muted);">net</small>');
+    return `<div class="lb-row ${x.u.me?'me':''}"><span class="lb-pos num">${pos}</span><span class="nm" style="flex:1;font-weight:800;">${x.u.name} <small style="color:var(--muted);font-weight:600;">${st.thru?'T'+st.thru:'–'}</small></span><span class="num" style="text-align:right;font-weight:800;">${val}</span></div>`;
+  }).join('');
+  el.innerHTML=`<div class="rescard" style="text-align:left;">
+    <div class="gl-title" style="margin-bottom:10px;"><span class="live-dot"></span> ${t('CLASSEMENT DU GROUPE — LIVE','GROUP LEADERBOARD — LIVE')}</div>
+    ${list||('<div class="pd-empty">'+t('Pas encore de score.','No scores yet.')+'</div>')}
+  </div>
+  <button class="btn btn-dark" onclick="show('lb')">🏆 ${t('Classement du club (jour · saison · ringer)','Club leaderboard (day · season · ringer)')}</button>`;
 }
 function renderGroupLive(){
   const r=S.round;
@@ -2635,19 +2681,33 @@ async function adminSave(){
 /* ================= DÉFIS AMIS ================= */
 const DFMT={stroke:['Stroke play','Stroke play'],net:['Stroke play','Stroke play'],match:['Match play','Match play'],stab_brut:['Stableford brut','Stableford gross'],stab_net:['Stableford net','Stableford net']};
 function dfmt(f){return (DFMT[f]||DFMT.stroke)[LANG==='en'?1:0];}
+const _courseHolesCache={};
+async function courseHolesOf(cid){
+  cid=cid||'st-clair';
+  if(cid===COURSE.id)return COURSE.holes;
+  if(_courseHolesCache[cid])return _courseHolesCache[cid];
+  try{const r=await sb.from('golf_courses').select('holes').eq('id',cid).single();
+    if(!r.error&&r.data&&Array.isArray(r.data.holes)){_courseHolesCache[cid]=r.data.holes;return r.data.holes;}}catch(e){}
+  return HOLES;
+}
 async function windowCards(memberId,start,end){
   try{
-    const r=await sb.from('golf_round_players').select('scores,coups_rendus,golf_rounds!inner(round_date)')
+    const r=await sb.from('golf_round_players').select('scores,coups_rendus,golf_rounds!inner(round_date,course_id)')
       .eq('member_id',memberId).gte('golf_rounds.round_date',start).lte('golf_rounds.round_date',end);
     if(r.error)return [];
-    return r.data.map(rp=>({scores:Array.isArray(rp.scores)?rp.scores:[],ph:rp.coups_rendus||0}))
-      .filter(c=>unitStats({ph:c.ph,scores:c.scores}).thru===18);
+    const out=[];
+    for(const rp of r.data){
+      const scores=Array.isArray(rp.scores)?rp.scores:[];
+      const holes=await courseHolesOf((rp.golf_rounds||{}).course_id); /* chaque carte notée sur SON parcours */
+      if(unitStats({ph:rp.coups_rendus||0,scores},holes).thru===18)out.push({scores,ph:rp.coups_rendus||0,holes});
+    }
+    return out;
   }catch(e){return [];}
 }
-function bestOf(cards,fmt){ /* val orienté « plus petit = meilleur » */
+function bestOf(cards,fmt){ /* val orienté « plus petit = meilleur » — chaque carte notée sur son parcours */
   let best=null;
   cards.forEach(c=>{
-    const st=unitStats({ph:c.ph,scores:c.scores});
+    const st=unitStats({ph:c.ph,scores:c.scores},c.holes);
     let v,disp;
     if(fmt==='stab_brut'){v=-st.ptsB;disp=st.ptsB+' pts';}
     else if(fmt==='stab_net'){v=-st.ptsN;disp=st.ptsN+' pts';}
